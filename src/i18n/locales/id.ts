@@ -271,6 +271,8 @@ const id: Dict = {
   "confirm.denied": "Ditolak — tidak dijalankan",
   "confirm.navigate": "Agen ingin membuka halaman di situs lain. Semua isi alamat di bawah akan dikirim ke situs itu:",
   "confirm.readUrl": "Agen ingin membaca halaman yang alamatnya dibuat sendiri (bukan dari hasil pencarian atau halaman yang sudah dibaca). Semua isi alamat di bawah akan dikirim ke situs itu:",
+  "confirm.navigateBuilt": "Agen ingin membuka alamat yang dibuat sendiri (bukan dari pesanmu, hasil pencarian, atau halaman yang sudah dibaca). Semua isi alamat di bawah akan dikirim ke situs itu:",
+  "confirm.type": "Agen ingin mengetik teks di bawah ke halaman ini. Obrolan ini sudah membaca konten web, dan halaman bisa membaca teks begitu diketik, meski belum dikirim:",
   "research.captcha": "Mesin pencari ingin memastikan Anda bukan robot. Selesaikan pemeriksaannya di tab yang baru terbuka — setelah itu penelitian lanjut sendiri.",
   "sources.title": "Sumber",
   "confirm.remember": "Agen ingin mengingat ini untuk semua obrolan berikutnya. Obrolan ini sudah membaca konten web, yang mungkin memintanya:",

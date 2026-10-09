@@ -271,6 +271,8 @@ const vi: Dict = {
   "confirm.denied": "Đã từ chối — chưa thực hiện",
   "confirm.navigate": "Agent muốn mở một trang của trang web khác. Mọi thứ trong địa chỉ bên dưới sẽ được gửi tới trang đó:",
   "confirm.readUrl": "Agent muốn đọc một trang do chính nó tự ghép địa chỉ (không đến từ kết quả tìm kiếm hay trang đã đọc). Mọi thứ trong địa chỉ bên dưới sẽ được gửi tới trang đó:",
+  "confirm.navigateBuilt": "Agent muốn mở một địa chỉ do chính nó tự ghép (không đến từ tin nhắn của bạn, kết quả tìm kiếm hay trang đã đọc). Mọi thứ trong địa chỉ bên dưới sẽ được gửi tới trang đó:",
+  "confirm.type": "Agent muốn nhập đoạn văn bản bên dưới vào trang này. Cuộc trò chuyện này đã đọc nội dung web, và trang có thể đọc văn bản ngay khi được nhập, kể cả khi chưa gửi:",
   "research.captcha": "Công cụ tìm kiếm muốn xác minh bạn không phải robot. Hãy hoàn tất bước xác minh ở thẻ vừa mở — sau đó quá trình nghiên cứu sẽ tự tiếp tục.",
   "sources.title": "Nguồn",
   "confirm.remember": "Agent muốn ghi nhớ điều này cho mọi cuộc trò chuyện sau. Cuộc trò chuyện này đã đọc nội dung web, có thể chính trang web đã yêu cầu:",

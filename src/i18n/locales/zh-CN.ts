@@ -271,6 +271,8 @@ const zhCN: Dict = {
   "confirm.denied": "已拒绝，未执行",
   "confirm.navigate": "Agent 要前往另一个网站。下面网址里的内容都会发送到那个网站：",
   "confirm.readUrl": "Agent 要读取一个自己拼出来的网址（不是来自搜索结果或读过的页面）。下面网址里的内容都会发送到那个网站：",
+  "confirm.navigateBuilt": "Agent 要打开一个自己拼出来的网址（不是来自你的消息、搜索结果或读过的页面）。下面网址里的内容都会发送到那个网站：",
+  "confirm.type": "Agent 要在这个页面输入下面的文字。这次对话读过网页内容，而文字一输入网页就能读到，不需要提交：",
   "research.captcha": "搜索引擎要确认你不是机器人：请在刚打开的标签页完成验证，完成后研究会自动继续。",
   "sources.title": "来源",
   "confirm.remember": "Agent 要把这句话记下来，之后每次对话都会用到。这次对话读过网页内容，可能是网页要它记的：",

@@ -283,6 +283,8 @@ const zhTW: Dict = {
   "confirm.denied": "已拒絕，沒有執行",
   "confirm.navigate": "Agent 要前往另一個網站。下面網址裡的內容都會送到那個網站：",
   "confirm.readUrl": "Agent 要讀一個自己組出來的網址（不是來自搜尋結果或讀過的頁面）。下面網址裡的內容都會送到那個網站：",
+  "confirm.navigateBuilt": "Agent 要前往一個自己組出來的網址（不是來自你的訊息、搜尋結果或讀過的頁面）。下面網址裡的內容都會送到那個網站：",
+  "confirm.type": "Agent 要在這個頁面輸入下面的文字。這次對話讀過網頁內容，而字一打進去網頁就讀得到，不用送出：",
   "research.captcha": "搜尋引擎要確認你不是機器人：請在剛切到前景的分頁完成驗證，完成後研究會自動繼續。",
   "sources.title": "來源",
   "confirm.remember": "Agent 要把這句記下來，之後每次對話都會用到。這次對話讀過網頁內容，可能是網頁要它記的：",

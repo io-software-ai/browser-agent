@@ -283,6 +283,8 @@ const ptBR: Dict = {
   "confirm.denied": "Negado — não foi realizado",
   "confirm.navigate": "O agente quer abrir uma página de outro site. Tudo o que está no endereço abaixo será enviado a esse site:",
   "confirm.readUrl": "O agente quer ler uma página cujo endereço ele mesmo montou (não veio dos resultados de busca nem de uma página lida). Tudo o que está no endereço abaixo será enviado a esse site:",
+  "confirm.navigateBuilt": "O agente quer abrir um endereço que ele mesmo montou (não veio da sua mensagem, dos resultados de busca nem de uma página lida). Tudo o que está no endereço abaixo será enviado a esse site:",
+  "confirm.type": "O agente quer digitar o texto abaixo nesta página. Esta conversa leu conteúdo da web, e a página consegue ler o texto assim que ele é digitado, mesmo sem enviar:",
   "research.captcha": "O mecanismo de busca quer confirmar que você não é um robô. Conclua a verificação na aba que acabou de abrir — depois a pesquisa continua sozinha.",
   "sources.title": "Fontes",
   "confirm.remember": "O agente quer lembrar disto em todas as conversas futuras. Esta conversa leu conteúdo da web, que pode ter pedido isso:",

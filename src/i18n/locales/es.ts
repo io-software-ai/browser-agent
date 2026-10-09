@@ -283,6 +283,8 @@ const es: Dict = {
   "confirm.denied": "Denegado — no se realizó",
   "confirm.navigate": "El agente quiere abrir una página de otro sitio. Todo lo que contiene la dirección de abajo se enviará a ese sitio:",
   "confirm.readUrl": "El agente quiere leer una página cuya dirección armó él mismo (no procede de los resultados de búsqueda ni de una página leída). Todo lo que contiene la dirección de abajo se enviará a ese sitio:",
+  "confirm.navigateBuilt": "El agente quiere abrir una dirección que armó él mismo (no procede de tu mensaje, de los resultados de búsqueda ni de una página leída). Todo lo que contiene la dirección de abajo se enviará a ese sitio:",
+  "confirm.type": "El agente quiere escribir el texto de abajo en esta página. Esta conversación ha leído contenido web, y la página puede leer el texto en cuanto se escribe, aunque no se envíe:",
   "research.captcha": "El buscador quiere comprobar que no eres un robot. Completa la comprobación en la pestaña que se acaba de abrir; después la investigación continuará sola.",
   "sources.title": "Fuentes",
   "confirm.remember": "El agente quiere recordar esto en todas las conversaciones futuras. Esta conversación ha leído contenido web, que podría habérselo pedido:",

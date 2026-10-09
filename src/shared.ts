@@ -145,7 +145,8 @@ export const CARD_TOOLS = ["ask_user", "create_file"];
 export type Link = { text: string; url: string };
 export type Summarizer = (page: { title: string; url: string; text: string; links: Link[] }, focus: string, signal?: AbortSignal) => Promise<string>;
 // typedUrls：使用者這則訊息裡的網址（read_url 不用問就能讀的只有完全相同的網址，不是整個網站）；reads：這個任務 read_url 了幾次
-export type Task = { origins: Set<string>; tainted: boolean; readChars?: number; question: string; summarize?: Summarizer; typedUrls: Set<string>; reads: number };
+// typed：使用者自己打的那行字（首頁建議是空的；question 會被換成建議的提示詞，那段是依網頁產生的，不能當成使用者給的字）
+export type Task = { origins: Set<string>; tainted: boolean; readChars?: number; question: string; typed: string; summarize?: Summarizer; typedUrls: Set<string>; reads: number };
 
 // 使用者打的字裡出現的網址與網域。網域沒寫協定就 http、https 都算
 export const userOrigins = (text: string): string[] => [...new Set(userUrls(text).map((u) => new URL(u).origin))];
@@ -162,7 +163,7 @@ export function userUrls(text: string): string[] {
 export function newTask(startUrl: string | undefined, userText: string, tainted: boolean, readChars?: number): Task {
   const origins = new Set(userOrigins(userText));
   try { if (startUrl) origins.add(new URL(startUrl).origin); } catch { /* 內建頁 */ }
-  return { origins, tainted, readChars, question: userText, typedUrls: new Set(userUrls(userText)), reads: 0 };
+  return { origins, tainted, readChars, question: userText, typed: userText, typedUrls: new Set(userUrls(userText)), reads: 0 };
 }
 
 // 來源：搜尋結果、讀過的頁面、頁面裡值得追的連結。編號 [n]＝陣列位置＋1，整個對話共用（存進歷史）

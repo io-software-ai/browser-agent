@@ -281,6 +281,12 @@ declare const BA_SEARCH: string; // esbuild define（scripts/build.mjs）：搜�
 declare const BA_SEARCH_FALLBACK: string; // 主要的搜尋引擎要求驗證時改用的（預設 Bing）
 declare const BA_TEST_PUBLIC_IP: string; // esbuild define：e2e 的假網站都在 127.0.0.1，測試版把它當公開 IP；正式版是空字串
 const noHash = (url: string) => url.split("#")[0];
+// 使用者這則訊息裡的網址、搜尋結果、讀過頁面裡的連結：完全相同才算。# 也要相同（或不帶）——
+// # 後面不會送到伺服器，但網頁的 JS 讀得到 location.hash，「登記過的網址#<記憶>」一樣能把資料帶出去
+function knownUrl(u: URL, task: Task): boolean {
+  const base = noHash(u.href);
+  return (!u.hash && task.typedUrls.has(base)) || S.sources.some((x) => x.url === u.href || (!u.hash && noHash(x.url) === base));
+}
 // 登記一個來源，回傳編號 [n]（同一個網址只登記一次）
 function addSource(url: string, title: string): number {
   const i = S.sources.findIndex((x) => noHash(x.url) === noHash(url));
@@ -330,7 +336,7 @@ async function checkReadUrl(raw: unknown, task: Task, signal?: AbortSignal): Pro
   denyBackend(u);
   const typed = task.typedUrls.has(noHash(u.href));
   if (isPrivateHost(u.hostname) && !typed) throw new Error("不能讀本機或內網的網址（使用者自己給的網址除外）");
-  if (typed || S.sources.some((x) => noHash(x.url) === noHash(u.href)) || RESEARCH_HOSTS.includes(u.hostname)) return u;
+  if (knownUrl(u, task) || RESEARCH_HOSTS.includes(u.hostname)) return u;
   if (!(await confirm({ label: u.hostname, submitting: false, host: u.hostname, text: t("confirm.readUrl"), detail: displayUrl(u.href) }, signal))) throw new Error(DENIED);
   return u;
 }
@@ -461,9 +467,13 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       let dest: URL;
       try { dest = new URL(input.url); } catch { throw new Error("網址格式不對"); }
       denyBackend(dest);
-      // 跨網站前往：網址本身就能把資料帶出去（?q=對話內容），不在允許清單就問使用者，卡片上顯示完整網址
-      if (!task.origins.has(dest.origin)) {
-        if (!(await confirm({ label: dest.hostname, submitting: false, host: dest.hostname, text: t("confirm.navigate"), detail: displayUrl(dest.href) }, signal))) throw new Error(DENIED);
+      // 網址本身就能把資料帶出去（/c?d=對話內容）。直接去：使用者給的、搜尋結果與讀過頁面裡的網址，以及使用者這則訊息裡打的網站（目的地是使用者選的）。
+      // 其他 agent 自己組的網址：讀過網頁之後一律問，任務起始的網站與允許過的網站也問（使用者正在看的網站可能就是攻擊者的）；
+      // 還沒讀過網頁時只問允許清單以外的網站。卡片上顯示完整網址
+      const userSite = [...task.typedUrls].some((x) => new URL(x).origin === dest.origin);
+      if (!knownUrl(dest, task) && !userSite && (task.tainted || !task.origins.has(dest.origin))) {
+        const text = t(task.origins.has(dest.origin) ? "confirm.navigateBuilt" : "confirm.navigate");
+        if (!(await confirm({ label: dest.hostname, submitting: false, host: dest.hostname, text, detail: displayUrl(dest.href) }, signal))) throw new Error(DENIED);
         task.origins.add(dest.origin);
       }
       task.tainted = true;
@@ -495,7 +505,15 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       return "已點擊";
     }
     case "type": {
-      if (input.submit) await guard(tab.id!, input, true, tab.url, signal);
+      const checked = input.submit ? (await guard(tab.id!, input, true, tab.url, signal)).risky : false; // risky＝送出前已經給使用者看過要送的字
+      // 讀過網頁之後，要打的字不是使用者這則訊息裡的（記憶、對話、別的網頁讀來的）先給使用者看：
+      // 不送出也一樣，網頁可以在欄位掛 oninput，字一打進去就被讀走
+      const text = String(input.text ?? "").trim();
+      // ponytail: 一次打一個使用者訊息裡有的字也能慢慢拼出資料——跟「挑哪個按鈕點」一樣是低頻寬的通道，擋不完；這裡擋的是整段資料直接打進去
+      if (task.tainted && !checked && text && !task.typed.toLowerCase().includes(text.toLowerCase())) {
+        const host = hostOf(tab.url);
+        if (!(await confirm({ label: host, submitting: false, host, text: t("confirm.type"), detail: text }, signal))) throw new Error(DENIED);
+      }
       const ok = await inPage(tab.id!, (sel: string, text: string, submit: boolean) => {
         const el = document.querySelector(sel) as any;
         if (!el) return null;

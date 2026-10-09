@@ -287,6 +287,8 @@ const en = {
   "confirm.denied": "Denied — not performed",
   "confirm.navigate": "The agent wants to open a page on another site. Anything in the address below will be sent to that site:",
   "confirm.readUrl": "The agent wants to read a page it put together the address for itself (it didn’t come from search results or a page it read). Anything in the address below will be sent to that site:",
+  "confirm.navigateBuilt": "The agent wants to open an address it put together itself (it didn’t come from your message, search results or a page it read). Anything in the address below will be sent to that site:",
+  "confirm.type": "The agent wants to type the text below into this page. This chat has read web content, and the page can read the text as soon as it’s typed, even without submitting:",
   "research.captcha": "The search engine wants to check you’re not a robot. Finish the check in the tab that just opened — research continues on its own afterwards.",
   "sources.title": "Sources",
   "confirm.remember": "The agent wants to remember this for all future chats. This chat has read web content, which may have asked for it:",

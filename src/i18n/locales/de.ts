@@ -283,6 +283,8 @@ const de: Dict = {
   "confirm.denied": "Abgelehnt — nicht ausgeführt",
   "confirm.navigate": "Der Agent möchte eine Seite auf einer anderen Website öffnen. Alles in der Adresse unten wird an diese Website gesendet:",
   "confirm.readUrl": "Der Agent möchte eine Seite lesen, deren Adresse er selbst zusammengesetzt hat (sie stammt nicht aus Suchergebnissen oder einer gelesenen Seite). Alles in der Adresse unten wird an diese Website gesendet:",
+  "confirm.navigateBuilt": "Der Agent möchte eine Adresse öffnen, die er selbst zusammengesetzt hat (sie stammt nicht aus deiner Nachricht, aus Suchergebnissen oder einer gelesenen Seite). Alles in der Adresse unten wird an diese Website gesendet:",
+  "confirm.type": "Der Agent möchte den Text unten in diese Seite eingeben. Dieser Chat hat Webinhalte gelesen, und die Seite kann den Text lesen, sobald er eingegeben ist – auch ohne Absenden:",
   "research.captcha": "Die Suchmaschine will prüfen, ob du kein Roboter bist. Schließe die Prüfung im gerade geöffneten Tab ab — danach läuft die Recherche automatisch weiter.",
   "sources.title": "Quellen",
   "confirm.remember": "Der Agent möchte sich das für alle künftigen Chats merken. Dieser Chat hat Webinhalte gelesen, die das verlangt haben könnten:",

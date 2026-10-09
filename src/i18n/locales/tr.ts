@@ -283,6 +283,8 @@ const tr: Dict = {
   "confirm.denied": "Reddedildi — gerçekleştirilmedi",
   "confirm.navigate": "Ajan başka bir sitedeki bir sayfayı açmak istiyor. Aşağıdaki adreste ne varsa o siteye gönderilecek:",
   "confirm.readUrl": "Ajan, adresini kendisinin oluşturduğu bir sayfayı okumak istiyor (adres arama sonuçlarından ya da okunmuş bir sayfadan gelmiyor). Aşağıdaki adreste ne varsa o siteye gönderilecek:",
+  "confirm.navigateBuilt": "Ajan, kendisinin oluşturduğu bir adresi açmak istiyor (adres mesajından, arama sonuçlarından ya da okunmuş bir sayfadan gelmiyor). Aşağıdaki adreste ne varsa o siteye gönderilecek:",
+  "confirm.type": "Ajan aşağıdaki metni bu sayfaya yazmak istiyor. Bu sohbet web içeriği okudu ve sayfa, gönderilmese bile metni yazıldığı anda okuyabilir:",
   "research.captcha": "Arama motoru robot olmadığını doğrulamak istiyor. Yeni açılan sekmede doğrulamayı tamamla; ardından araştırma kendiliğinden devam eder.",
   "sources.title": "Kaynaklar",
   "confirm.remember": "Ajan bunu sonraki tüm sohbetler için hatırlamak istiyor. Bu sohbet web içeriği okudu; bunu isteyen o sayfa olabilir:",
