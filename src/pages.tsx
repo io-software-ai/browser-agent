@@ -1,13 +1,14 @@
 // 設定、歷史對話、技能編輯：佔滿側邊欄的整頁畫面（左上返回），由 App 用一個堆疊管理（設定 → 子頁 → 技能編輯）
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { S, emit, setMemories, showToast } from "./store";
-import { persist, send, showView, openChat, deleteChat, resetChat, scheduleSuggestions, refreshMe, setMode, COMMANDS } from "./agent";
+import { persist, send, showView, openChat, deleteChat, restoreChat, loadChat, resetChat, scheduleSuggestions, refreshMe, setMode, COMMANDS } from "./agent";
 import { addMemory, MAX_MEMORY_CHARS, MAX_MEMORIES } from "./memory";
 import { parseSkill, serializeSkill, cleanName, LEGACY_SOURCE, type Skill } from "./skills";
 import { bundleSkills, fetchSkills, folderEntries, unzip, isZip, InstallError } from "./skill-install";
-import { toMarkdown, groupChats, MAX_CHATS, type Chat } from "./history";
+import { toMarkdown, groupChats, MAX_CHATS, type ChatMeta } from "./history";
+import { currentProject } from "./projects";
 import { t, LANGS, langPref, setLangPref, currentLang, type Key } from "./i18n";
-import { IconBack, IconChevron, IconErr, IconFile, IconFolder, IconGitHub, IconGlobe, IconGoogle, IconLink, IconMore, IconPlus, IconSearch, IconShield, IconUser } from "./icons";
+import { IconBack, IconChevron, IconErr, IconFile, IconFolder, IconGitHub, IconGlobe, IconGoogle, IconLink, IconMore, IconOk, IconPlus, IconSearch, IconShield, IconUser } from "./icons";
 import { Select, type Opt } from "./select";
 import { ANTHROPIC_MODELS, PROVIDERS, PROVIDER_IDS, activeProvider, providerName, cleanBaseURL, baseURL, conf, currentModel, listModels, ready, type ProviderId } from "./providers";
 import { BACKEND, BackendError, signIn, signOut, type Me, type Provider } from "./backend";
@@ -18,7 +19,9 @@ export type Route =
   | { name: "settings" }
   | { name: "memory" }
   | { name: "skills" }
-  | { name: "skill"; skill: Skill | null }; // skill 為 null＝新增
+  | { name: "skill"; skill: Skill | null } // skill 為 null＝新增
+  | { name: "projects" }
+  | { name: "project"; id: string };
 
 export type Nav = { push: (r: Route) => void; pop: () => void; closeAll: (focusId?: string) => void };
 
@@ -48,7 +51,7 @@ export function SkillItem({ cls, skill, ...rest }: { cls: string; skill: { name:
 }
 
 // 整頁外殼：固定的頂列（返回＋標題）＋可捲動的內容。Esc＝返回（選單等子元件處理過 Esc 會 preventDefault）
-function Page({ id, title, onBack, children }: { id: string; title: string; onBack: () => void; children: ReactNode }) {
+export function Page({ id, title, onBack, children }: { id: string; title: string; onBack: () => void; children: ReactNode }) {
   const back = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => { back.current?.focus(); }, [id]);
   return (
@@ -86,8 +89,10 @@ export function Toast() {
   );
 }
 
-// 「⋯」選單：Enter／空白鍵打開後焦點在第一項，↑↓ 移動、Esc 關閉並回到按鈕、焦點離開就關
-function RowMenu({ label, items }: { label: string; items: { label: string; danger?: boolean; run: () => void }[] }) {
+// 「⋯」選單：Enter／空白鍵打開後焦點在第一項，↑↓ 移動、Esc 關閉並回到按鈕、焦點離開就關。
+// children／btnClass：換掉預設的「⋯」按鈕（頂列的專案切換器）；checked：單選的那一項打勾；divider：這一項上面加分隔線
+export type MenuItem = { label: string; danger?: boolean; run: () => void; checked?: boolean; divider?: boolean };
+export function RowMenu({ label, items, children, btnClass = "icon-btn more-btn", btnId, disabled, align }: { label: string; items: MenuItem[]; children?: ReactNode; btnClass?: string; btnId?: string; disabled?: boolean; align?: "left" }) {
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -101,7 +106,7 @@ function RowMenu({ label, items }: { label: string; items: { label: string; dang
   }, [open]);
   const close = (refocus: boolean) => { setOpen(false); if (refocus) btn.current?.focus(); };
   const onKey = (e: KeyboardEvent) => {
-    const list = [...menu.current!.querySelectorAll<HTMLElement>("[role=menuitem]")];
+    const list = [...menu.current!.querySelectorAll<HTMLElement>("[role^=menuitem]")];
     const i = list.indexOf(document.activeElement as HTMLElement);
     const go = (j: number) => { e.preventDefault(); list[(j + list.length) % list.length]?.focus(); };
     if (e.key === "ArrowDown") go(i + 1);
@@ -114,13 +119,16 @@ function RowMenu({ label, items }: { label: string; items: { label: string; dang
   };
   return (
     <div className="menu-wrap" ref={wrap} data-open={open ? "" : undefined} onBlur={(e) => { if (open && !wrap.current!.contains(e.relatedTarget as Node)) setOpen(false); }}>
-      <button type="button" className="icon-btn more-btn" ref={btn} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open}
-        onClick={() => setOpen(!open)}><IconMore /></button>
+      <button type="button" className={btnClass} id={btnId} ref={btn} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} disabled={disabled}
+        onClick={() => setOpen(!open)}>{children ?? <IconMore />}</button>
       {open && (
-        <div className={up ? "menu up" : "menu"} role="menu" ref={menu} onKeyDown={onKey}>
-          {items.map((it) => (
-            <button key={it.label} type="button" role="menuitem" tabIndex={-1} className={it.danger ? "danger" : undefined}
-              onClick={() => { close(false); it.run(); }}>{it.label}</button>
+        <div className={["menu", up && "up", align].filter(Boolean).join(" ")} role="menu" ref={menu} onKeyDown={onKey}>
+          {items.map((it, i) => (
+            <Fragment key={i}>
+              {it.divider && <div className="menu-sep" role="separator" />}
+              <button type="button" role={it.checked == null ? "menuitem" : "menuitemradio"} aria-checked={it.checked} tabIndex={-1} className={it.danger ? "danger" : undefined}
+                onClick={() => { close(false); it.run(); }}>{it.checked && <IconOk />}<span>{it.label}</span></button>
+            </Fragment>
           ))}
         </div>
       )}
@@ -132,32 +140,31 @@ function RowMenu({ label, items }: { label: string; items: { label: string; dang
 
 const SEARCH_MIN = 8; // 超過這麼多段才出現搜尋框
 
-function chatTime(chat: Chat, group: string) {
+function chatTime(chat: ChatMeta, group: string) {
   const d = new Date(chat.updated);
   return group === "today" || group === "yesterday"
     ? d.toLocaleTimeString(currentLang(), { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString(currentLang(), { month: "numeric", day: "numeric" });
 }
 
-async function removeChat(chat: Chat) {
-  const index = S.chats.indexOf(chat);
-  const wasCurrent = chat.id === S.chatId;
-  await deleteChat(chat);
+async function removeChat(meta: ChatMeta) {
+  const index = S.chats.findIndex((c) => c.id === meta.id);
+  const wasCurrent = meta.id === S.chatId;
+  const chat = await deleteChat(meta);
   showToast(t("history.deleted"), async () => {
-    if (S.chats.some((c) => c.id === chat.id)) return;
-    const list = [...S.chats];
-    list.splice(Math.min(index, list.length), 0, chat);
-    S.chats = list.slice(0, MAX_CHATS);
-    if (wasCurrent && S.chatId === null) S.chatId = chat.id; // 畫面上的還是那段對話：接著聊要更新同一筆
-    emit();
-    await persist({ chats: S.chats });
+    await restoreChat(chat, index);
+    if (wasCurrent && S.chatId === null) { S.chatId = chat.id; emit(); } // 畫面上的還是那段對話：接著聊要更新同一筆
   });
 }
 
 export function HistoryPage({ nav }: { nav: Nav }) {
   const [q, setQ] = useState("");
+  const project = currentProject();
+  const [scope, setScope] = useState<"all" | "project">(project ? "project" : "all"); // 在專案裡打開歷史：先只看這個專案的
+  const inScope = project && scope === "project" ? S.chats.filter((c) => c.projectId === project.id) : S.chats;
   const query = S.chats.length > SEARCH_MIN ? q.trim().toLocaleLowerCase() : "";
-  const shown = query ? S.chats.filter((c) => c.title.toLocaleLowerCase().includes(query)) : S.chats;
+  const shown = query ? inScope.filter((c) => c.title.toLocaleLowerCase().includes(query)) : inScope;
+  const projectName = (c: ChatMeta) => (scope === "all" && c.projectId ? S.projects.find((p) => p.id === c.projectId)?.name : undefined);
   // ↑↓ 在各段對話之間移動（選單打開時由選單自己處理）
   const onListKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -169,6 +176,12 @@ export function HistoryPage({ nav }: { nav: Nav }) {
   return (
     <Page id="history" title={t("history.title")} onBack={nav.pop}>
       {S.busy && <div className="notice" id="history-busy">{t("history.busy")}</div>}
+      {project && (
+        <div className="segmented" id="history-scope" role="group" aria-label={t("history.scope")}>
+          <button type="button" aria-pressed={scope === "project"} onClick={() => setScope("project")}><IconFolder /><span>{project.name}</span></button>
+          <button type="button" aria-pressed={scope === "all"} onClick={() => setScope("all")}>{t("history.all")}</button>
+        </div>
+      )}
       {S.chats.length > SEARCH_MIN && (
         <label className="search">
           <IconSearch />
@@ -182,7 +195,7 @@ export function HistoryPage({ nav }: { nav: Nav }) {
           <button className="btn btn-ghost" type="button" onClick={() => { resetChat(); nav.closeAll("input"); }}>{t("history.startNew")}</button>
         </div>
       ) : !shown.length ? (
-        <div className="empty-state"><span>{t("history.noMatch")}</span></div>
+        <div className="empty-state"><span>{t(query ? "history.noMatch" : "project.chatsEmpty")}</span></div>
       ) : (
         <div id="history-list" onKeyDown={onListKey}>
           {groupChats(shown).map(({ group, chats }) => (
@@ -191,14 +204,16 @@ export function HistoryPage({ nav }: { nav: Nav }) {
               <ul role="list">
                 {chats.map((chat) => {
                   const current = chat.id === S.chatId;
+                  const tag = projectName(chat);
                   return (
                     <li className="chat-row" key={chat.id} aria-current={current ? "true" : undefined}>
-                      <button type="button" className="chat-open" title={current ? t("history.current") : undefined} onClick={() => { openChat(chat); nav.closeAll("input"); }}>
+                      <button type="button" className="chat-open" title={current ? t("history.current") : undefined} onClick={async () => { await openChat(chat); nav.closeAll("input"); }}>
                         <span className="chat-title">{chat.title}</span>
+                        {tag && <span className="chat-project"><IconFolder />{tag}</span>}
                         <time dateTime={new Date(chat.updated).toISOString()}>{chatTime(chat, group)}</time>
                       </button>
                       <RowMenu label={t("common.more")} items={[
-                        { label: t("history.export"), run: () => download(`${chat.title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 40)}.md`, toMarkdown(chat)) },
+                        { label: t("history.export"), run: async () => download(`${chat.title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 40)}.md`, toMarkdown(await loadChat(chat))) },
                         { label: t("common.delete"), danger: true, run: () => removeChat(chat) },
                       ]} />
                     </li>
@@ -562,27 +577,53 @@ function memoryError(r: ReturnType<typeof addMemory>) {
   return t("memory.errEmpty");
 }
 
-export function MemoryPage({ nav }: { nav: Nav }) {
+// 記憶清單＋新增（設定的記憶頁與專案頁共用）。get 每次讀當下的清單：復原時清單可能已經被 agent 或別頁改過
+export function MemoryEditor({ id, get, save, placeholder }: { id: string; get: () => string[]; save: (list: string[]) => Promise<void>; placeholder: string }) {
   const [mem, setMem] = useState("");
   const [memErr, setMemErr] = useState<ReturnType<typeof addMemory> | null>(null); // 存結果不存字串：換語言時跟著換
+  const list = get();
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    const r = addMemory(S.memories, mem);
-    if (r.list === S.memories) { setMemErr(r); return; }
+    const r = addMemory(get(), mem);
+    if (r.list === get()) { setMemErr(r); return; }
     setMemErr(null);
-    await setMemories(r.list);
+    await save(r.list);
     setMem("");
   };
   const remove = async (m: string) => {
-    const index = S.memories.indexOf(m);
-    await setMemories(S.memories.filter((x) => x !== m));
+    const index = get().indexOf(m);
+    await save(get().filter((x) => x !== m));
     showToast(t("memory.deleted"), () => {
-      if (S.memories.includes(m)) return;
-      const list = [...S.memories];
-      list.splice(Math.min(index, list.length), 0, m);
-      setMemories(list.slice(0, MAX_MEMORIES));
+      if (get().includes(m)) return;
+      const next = [...get()];
+      next.splice(Math.min(index, next.length), 0, m);
+      save(next.slice(0, MAX_MEMORIES));
     });
   };
+  return (
+    <>
+      <div className="row">
+        <form className="input-group" id={`${id}-add`} onSubmit={add}>
+          <input id={`${id}-input`} placeholder={placeholder} aria-label={placeholder} autoComplete="off" maxLength={MAX_MEMORY_CHARS} value={mem} onChange={(e) => setMem(e.target.value)} />
+          <button className="btn btn-primary" type="submit" disabled={!mem.trim()}>{t("memory.add")}</button>
+        </form>
+        <div className="form-error" id={`${id}-error`}>{memErr && memoryError(memErr)}</div>
+      </div>
+      {!list.length ? <div className="skill-empty">{t("memory.empty")}</div> : (
+        <ul className="item-list" id={`${id}-list`} role="list">
+          {list.map((m) => (
+            <li className="memory-row" key={m}>
+              <span>{m}</span>
+              <button type="button" className="icon-btn" title={t("common.delete")} aria-label={`${t("common.delete")}: ${m}`} onClick={() => remove(m)}><IconErr /></button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+export function MemoryPage({ nav }: { nav: Nav }) {
   return (
     <Page id="memory" title={t("memory.title")} onBack={nav.pop}>
       <div className="list-group">
@@ -596,23 +637,7 @@ export function MemoryPage({ nav }: { nav: Nav }) {
         </label>
       </div>
       <div className="hint">{t("memory.hint")}</div>
-      <div className="row">
-        <form className="key-row" id="memory-add" onSubmit={add}>
-          <input className="input" id="memory-input" placeholder={t("memory.placeholder")} aria-label={t("memory.placeholder")} autoComplete="off" maxLength={MAX_MEMORY_CHARS} value={mem} onChange={(e) => setMem(e.target.value)} />
-          <button className="btn btn-ghost" type="submit">{t("memory.add")}</button>
-        </form>
-        <div className="form-error" id="memory-error">{memErr && memoryError(memErr)}</div>
-      </div>
-      {!S.memories.length ? <div className="skill-empty">{t("memory.empty")}</div> : (
-        <ul className="item-list" id="memory-list" role="list">
-          {S.memories.map((m) => (
-            <li className="memory-row" key={m}>
-              <span>{m}</span>
-              <button type="button" className="icon-btn" title={t("common.delete")} aria-label={`${t("common.delete")}: ${m}`} onClick={() => remove(m)}><IconErr /></button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <MemoryEditor id="memory" get={() => S.memories} save={setMemories} placeholder={t("memory.placeholder")} />
       {!!S.memories.length && (
         <div className="page-foot">
           <button className="btn btn-ghost danger wide" type="button" id="memory-clear" onClick={async () => {

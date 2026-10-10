@@ -621,6 +621,80 @@
   .page-card { width: 100%; min-height: 44px; text-align: left; cursor: pointer; }
   .page-card:hover { border-color: var(--accent); }
   .page-meta { flex: 1; }
+
+  /* ---------- 專案：頂列切換器、清單、專案頁 ---------- */
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  header > .project-switch, .project-switch-wrap { margin-right: auto; min-width: 0; }
+  .project-switch-wrap { display: flex; flex: 0 1 auto; }
+  .project-switch-wrap .menu-wrap { flex: 0 1 auto; min-width: 0; padding: 0; }
+  .project-switch {
+    display: flex; align-items: center; gap: 6px; max-width: 100%; height: 32px; padding: 0 8px 0 7px; border: 0; border-radius: 7px;
+    background: transparent; color: var(--fg); font-size: 13px; font-weight: 600;
+  }
+  .project-switch span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .project-switch svg { color: var(--muted); }
+  .project-switch:hover:not(:disabled) { background: var(--surface-2); }
+  .project-switch:disabled { opacity: .5; }
+  .project-switch[data-none], .project-switch-wrap[data-none] .project-switch { color: var(--muted); font-weight: 500; }
+  .menu.left { left: 0; right: auto; min-width: 190px; }
+  .menu button { display: flex; align-items: center; gap: 8px; }
+  .menu button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu button svg { color: var(--accent); }
+  .menu [role=menuitemradio]:not([aria-checked=true]) span { padding-left: 24px; }
+  .menu-sep { height: 1px; margin: 4px 6px; background: var(--line); }
+  .menu.left [role=menuitem] span { padding-left: 24px; } /* 跟打勾的專案名稱對齊 */
+  /* 專案頁的記憶、對話：跟檔案清單一樣放進卡片 */
+  #project-memory-list, #project-chats { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  #project-memory-list .memory-row { padding: 6px 6px 6px 12px; }
+  #project-chats { padding: 4px; }
+  .project-icon { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+  .project-row { flex-wrap: nowrap; }
+  .project-row .row-text strong, .project-banner .row-text strong { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .project-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 3px; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .project-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+  .project-meta svg { width: 12px; height: 12px; }
+  .project-banner {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--surface); box-shadow: var(--shadow); text-align: left; font-size: 13px;
+  }
+  .project-banner:hover { background: var(--surface-2); }
+  .project-banner > svg { color: var(--faint); }
+  .segmented { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--surface-2); }
+  .segmented button {
+    flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 10px;
+    border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 500;
+  }
+  .segmented button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .segmented button[aria-pressed=true] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+  .segmented svg { width: 13px; height: 13px; }
+  .chat-project { order: 3; flex: 1 0 100%; display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--faint); font-size: 11.5px; }
+  .chat-project svg { width: 11px; height: 11px; }
+  .project-instructions { height: auto; min-height: calc(4lh + 18px); max-height: calc(14lh + 18px); padding: 8px 10px; resize: none; field-sizing: content; line-height: 1.55; }
+  .char-count { color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .file-list { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+  .file-list[data-drag] { border-color: var(--accent); box-shadow: var(--ring); }
+  .file-row { display: flex; align-items: center; gap: 10px; padding: 7px 6px 7px 12px; font-size: 13px; }
+  .file-row + .file-row { border-top: 1px solid var(--line); }
+  .file-row > svg { color: var(--faint); }
+  .file-row .row-text small { margin-top: 0; }
+  .file-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-row .icon-btn svg { width: 12px; height: 12px; }
+  .file-row .icon-btn:hover { color: var(--err); }
+  .drop-zone {
+    display: grid; justify-items: center; gap: 4px; width: 100%; padding: 22px 14px; border: 1.5px dashed var(--line-strong); border-radius: 12px;
+    background: var(--surface); color: var(--muted); text-align: center; cursor: pointer;
+  }
+  .drop-zone svg { width: 20px; height: 20px; margin-bottom: 4px; color: var(--faint); }
+  .drop-zone strong { color: var(--fg); font-size: 13px; font-weight: 500; }
+  .drop-zone small { color: var(--faint); font-size: 12px; line-height: 1.5; }
+  .drop-zone:hover, .drop-zone[data-drag] { border-color: var(--accent); background: var(--accent-soft); }
+  .skill-pick { flex-wrap: nowrap; align-items: flex-start; }
+  .skill-pick input { flex: none; width: 15px; height: 15px; margin: 2px 0 0; accent-color: var(--accent); }
+  .skill-pick strong { display: block; font: 500 12.5px ui-monospace, "SF Mono", Menlo, monospace; }
+  .skill-pick small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .btn-danger { background: var(--err); color: #fff; }
+  .btn-danger:hover { filter: brightness(1.06); }
+  .confirm-inline { gap: 12px; padding: 14px; font-size: 13px; line-height: 1.55; border-color: color-mix(in srgb, var(--err) 35%, var(--line)); }
 </style>
 </head>
 <body data-view="chat">

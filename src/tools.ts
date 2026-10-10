@@ -4,6 +4,7 @@ import { listElements, inspectTarget } from "./elements";
 import { addMemory, forgetMemory } from "./memory";
 import { checkFile } from "./files";
 import { skillResult } from "./skills";
+import { fileChunk, fileList, fileText, findFile, projectSkills, updateProject, MAX_FILE_CHARS, MAX_FILE_READS, READ_CHUNK } from "./projects";
 import { fetchPdf, openPdf, pdfText, isScanned, isPdfUrl, viewerFile, toBase64, PdfError, MAX_SCAN_PAGES, MAX_SCAN_BYTES } from "./pdf";
 import { S, emit, addItem, setMemories, type AskItem, type AskInput, type ConfirmItem, type NoteItem } from "./store";
 import type { Block } from "./history";
@@ -404,6 +405,8 @@ async function screenshot(tab: chrome.tabs.Tab): Promise<Block[]> {
 }
 
 // tabId 是這次任務開始時的分頁：使用者中途切到別的分頁，agent 也不會跑去操作那一頁
+const taskProject = (task: Task) => (task.projectId ? S.projects.find((p) => p.id === task.projectId) ?? null : null);
+
 export async function runTool(name: string, input: Input, tabId: number, task: Task, signal?: AbortSignal): Promise<string | Block[]> {
   const tab = await chrome.tabs.get(tabId).catch(() => {
     throw new Error("任務開始時的分頁已經被關掉了，停止操作並告訴使用者");
@@ -418,26 +421,61 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
     }
     case "remember":
     case "forget": {
-      const before = S.memories;
+      // remember 帶 scope=project 記在專案。forget 兩邊都找：完全相同優先；只有部分符合、兩邊又都有，就請模型給完整的句子
+      const project = taskProject(task);
+      const key = String(input.text ?? "").trim();
+      if (name === "remember" && input.scope === "project" && !project) throw new Error("這個對話不在專案裡：不帶 scope 才能記（記在使用者記憶）");
+      let inProject = name === "remember" && !!project && input.scope === "project";
+      if (name === "forget" && project) {
+        const exact = (xs: string[]) => xs.includes(key);
+        const partial = (xs: string[]) => !!key && xs.some((m) => m.includes(key));
+        if (exact(project.memories) || exact(S.memories)) inProject = exact(project.memories);
+        else if (partial(project.memories) && partial(S.memories)) {
+          const hits = [...project.memories, ...S.memories].filter((m) => m.includes(key));
+          return `專案記憶和使用者記憶裡都有符合「${key}」的，請給完整的句子：\n${hits.map((m) => `- ${m}`).join("\n")}`;
+        } else inProject = partial(project.memories);
+      }
+      const current = () => (inProject ? taskProject(task)?.memories : S.memories);
+      const before = current()!;
       const { list, result } = (name === "remember" ? addMemory : forgetMemory)(before, input.text);
-      // 讀過網頁內容之後才要寫記憶：可能是網頁誘導的（記憶會跟著之後每一次對話），先給使用者看要記的那句
-      if (name === "remember" && list !== before && task.tainted) {
-        const text = list.find((m) => !before.includes(m))!;
-        if (!(await confirm({ label: text, submitting: false, host: hostOf(tab.url), text: t("confirm.remember"), detail: text }, signal))) {
-          throw new Error("使用者不同意記下這句。不要再嘗試記住它");
+      // 讀過網頁（或專案檔案、附檔）之後才要改記憶：可能是內容誘導的（記憶會跟著之後每一次對話，刪掉也一樣），先給使用者看是哪一句
+      if (list !== before && task.tainted) {
+        const text = name === "remember" ? list.find((m) => !before.includes(m))! : before.find((m) => !list.includes(m))!;
+        const ask = name === "remember"
+          ? (inProject ? t("confirm.rememberProject", { name: project!.name }) : t("confirm.remember"))
+          : (inProject ? t("confirm.forgetProject", { name: project!.name }) : t("confirm.forget"));
+        if (!(await confirm({ label: text, submitting: false, host: hostOf(tab.url), text: ask, detail: text }, signal))) {
+          throw new Error(name === "remember" ? "使用者不同意記下這句。不要再嘗試記住它" : "使用者不同意刪掉這條記憶。不要再嘗試刪它");
         }
-        if (S.memories !== before) return "記憶在等待確認時被改過了，請重新呼叫 remember"; // 等待期間在設定頁改過
+        if (current() !== before) return `記憶在等待確認時被改過了，請重新呼叫 ${name}`; // 等待期間在設定頁（或專案頁）改過
       }
       if (list !== before) {
-        await setMemories(list);
+        if (inProject) await updateProject(project!.id, { memories: list });
+        else await setMemories(list);
         // 記了／忘了哪一句：新增的是 list 多出來的那條，刪掉的是 before 少掉的那條
         const text = name === "remember" ? list.find((m) => !before.includes(m)) : before.find((m) => !list.includes(m));
-        if (text) addItem({ kind: "memory", op: name, text });
+        if (text) addItem({ kind: "memory", op: name, text, ...(inProject ? { projectId: project!.id } : {}) });
       }
       return result;
     }
+    case "read_project_file": {
+      const project = taskProject(task);
+      if (!project) throw new Error("這個對話不在專案裡，沒有專案檔案");
+      task.fileReads = (task.fileReads ?? 0) + 1;
+      if (task.fileReads > MAX_FILE_READS) throw new Error(`這個任務已經呼叫了 ${MAX_FILE_READS} 次 read_project_file，不能再讀：用已經讀到的內容回答，或請使用者在下一則訊息指定要看哪個檔案的哪一段`);
+      task.tainted = true; // 檔名與內容都是使用者上傳的檔案帶來的（常是網路下載的）：跟網頁內容一樣不可信
+      if (input.name == null || input.name === "") return fileList(project);
+      const used = task.fileChars ?? 0;
+      if (used >= MAX_FILE_CHARS) throw new Error(`這個任務已經讀了 ${MAX_FILE_CHARS} 字的專案檔案，不能再讀：用已經讀到的內容回答，或請使用者在下一則訊息指定要看哪一段`);
+      const file = findFile(project, input.name);
+      const text = await fileText(file);
+      const offset = Number(input.offset) || 0;
+      const size = Math.min(READ_CHUNK, task.readChars ?? S.pageChars, MAX_FILE_CHARS - used); // 一次讀多少跟讀頁字數的設定一樣
+      task.fileChars = used + Math.min(size, Math.max(0, text.length - offset));
+      return fileChunk(file.name, text, offset, size);
+    }
     case "use_skill": {
-      const usable = S.skills.filter((s) => !s.manual); // disable-model-invocation 的只能由使用者 /名稱 叫出
+      const usable = projectSkills(S.skills, taskProject(task)).filter((s) => !s.manual); // disable-model-invocation 的只能由使用者 /名稱 叫出；專案指定了技能就只開那幾個
       const skill = usable.find((s) => s.name === input.name);
       if (!skill) throw new Error(`沒有名為「${input.name}」的技能，可用的有：${usable.map((s) => s.name).join("、") || "（無）"}`);
       if (skill.source) task.tainted = true; // 匯入／安裝的技能是第三方寫的指示，跟網頁內容一樣不可信

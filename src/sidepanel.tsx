@@ -12,16 +12,18 @@ import { cloudModels, estimateCredits } from "./cloud-models";
 import { t, currentLang, type Key } from "./i18n";
 import { LogList } from "./log";
 import { HistoryPage, SettingsPage, MemoryPage, SkillsPage, SkillEditorPage, SkillItem, Toast, ModelSelect, CloudModelSelect, type Route, type Nav } from "./pages";
+import { ProjectSwitch, ProjectsPage, ProjectPage, ProjectBanner } from "./project-pages";
 import {
   IconGear, IconHistory, IconLines, IconPlus, IconSend, IconSpark, IconStop, IconTable, IconTranslate,
 } from "./icons";
 
 const lines = (s: string) => s.split("\n").flatMap((line, i) => (i ? [<br key={i} />, line] : [line]));
 
-// Chrome 側邊欄最上面本來就有擴充功能的 logo＋名稱＋關閉鈕，這裡不再重複：只留三個圖示鈕（靠右）
-function Header({ onHistory, onSettings, inert }: { onHistory: () => void; onSettings: () => void; inert: boolean }) {
+// Chrome 側邊欄最上面本來就有擴充功能的 logo＋名稱＋關閉鈕，這裡不再重複：左邊是專案切換器，右邊三個圖示鈕
+function Header({ onHistory, onSettings, inert, nav }: { onHistory: () => void; onSettings: () => void; inert: boolean; nav: Nav }) {
   return (
     <header inert={inert}>
+      <ProjectSwitch nav={nav} />
       <button className="icon-btn" id="open-history" type="button" title={t("header.history")} aria-label={t("header.history")} onClick={onHistory}><IconHistory /></button>
       <button className="icon-btn" id="reset" type="button" title={t("header.newChat")} aria-label={t("header.newChat")} onClick={resetChat}><IconPlus /></button>
       <button className="icon-btn" id="open-settings" type="button" title={t("header.settings")} aria-label={t("header.settings")} onClick={onSettings}><IconGear /></button>
@@ -114,7 +116,7 @@ const DEFAULT_SUGGESTIONS: { icon: ReactNode; key: "summary" | "translate" | "ta
 
 // 依頁面產生的建議只差在圖示。點擊直接送出（使用者選的）；建議是看網頁內容產生的、網頁可以操弄它，
 // 所以送出後照樣走 tools.ts 的確認卡（跨網站、不可逆動作），不因為是點建議就放行
-function Empty() {
+function Empty({ nav }: { nav: Nav }) {
   const { list, sub, loading } = S.suggest;
   const items: (Suggestion & { icon: ReactNode })[] = list
     ? list.map((s) => ({ ...s, icon: <IconSpark /> }))
@@ -123,6 +125,7 @@ function Empty() {
     }));
   return (
     <div id="empty" data-loading={loading ? "" : undefined}>
+      <ProjectBanner nav={nav} />
       <div><h2>{t("empty.title")}</h2></div>
       <p id="empty-sub">{sub ?? t("empty.canSee")}</p>
       <div id="suggestions" className="suggest-list">
@@ -239,7 +242,7 @@ function Composer() {
   );
 }
 
-function ChatView({ inert }: { inert: boolean }) {
+function ChatView({ inert, nav }: { inert: boolean; nav: Nav }) {
   const box = useRef<HTMLDivElement>(null);
   const near = useRef(true); // 使用者往上捲在看舊內容時不要把他拉回底部
   useLayoutEffect(() => {
@@ -253,7 +256,7 @@ function ChatView({ inert }: { inert: boolean }) {
         const b = box.current!;
         near.current = b.scrollHeight - b.scrollTop - b.clientHeight < 80;
       }}>
-        <Empty />
+        <Empty nav={nav} />
         <div id="log"><LogList items={S.log} /></div>
       </div>
       <Composer />
@@ -287,18 +290,25 @@ function App() {
     : top.name === "settings" ? <SettingsPage nav={nav} />
     : top.name === "memory" ? <MemoryPage nav={nav} />
     : top.name === "skills" ? <SkillsPage nav={nav} />
+    : top.name === "projects" ? <ProjectsPage nav={nav} />
+    : top.name === "project" ? <ProjectPage key={top.id} id={top.id} nav={nav} />
     : <SkillEditorPage key={top.skill?.name ?? ""} skill={top.skill} nav={nav} />;
   return (
     <>
-      <Header inert={!!page} onHistory={() => nav.push({ name: "history" })} onSettings={() => nav.push({ name: "settings" })} />
+      <Header inert={!!page} nav={nav} onHistory={() => nav.push({ name: "history" })} onSettings={() => nav.push({ name: "settings" })} />
       <Consent />
       <Onboard />
-      <ChatView inert={!!page} />
+      <ChatView inert={!!page} nav={nav} />
       {page}
       <Toast />
     </>
   );
 }
+
+// 檔案拖到側邊欄的其他地方：Chrome 預設會在側邊欄裡打開那個檔案（整個介面被換掉）。只有拖放區自己處理 drop
+const dragsFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files"); // 拖文字進輸入框照舊
+addEventListener("dragover", (e) => { if (dragsFiles(e)) e.preventDefault(); });
+addEventListener("drop", (e) => { if (dragsFiles(e)) e.preventDefault(); });
 
 await init();
 createRoot(document.getElementById("root")!).render(<App />);

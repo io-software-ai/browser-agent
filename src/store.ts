@@ -2,7 +2,8 @@
 // ponytail: 整棵樹一起重繪，串流時每幀最多一次（emitSoon）；對話很長變慢再改成分區訂閱
 import { useSyncExternalStore } from "react";
 import type { Skill } from "./skills";
-import type { Chat, Message } from "./history";
+import type { Project } from "./projects";
+import type { ChatMeta, Message } from "./history";
 import type { ProviderId, ProviderConf } from "./providers";
 import type { Me } from "./backend";
 import type { Mode } from "./mode";
@@ -22,7 +23,7 @@ export type AskItem = { id: number; kind: "ask"; input: AskInput; state: "waitin
 export type FileItem = { id: number; kind: "file"; filename: string; content: string; description?: string };
 // text：不是點擊／送出的確認（例如掃描 PDF 要整份送出），直接給卡片內文
 export type ConfirmItem = { id: number; kind: "confirm"; label: string; submitting: boolean; host: string; text?: string; aria?: string; mismatch?: boolean; detail?: string; state: "waiting" | "allowed" | "denied"; decide?: (ok: boolean) => void };
-export type MemoryItem = { id: number; kind: "memory"; op: "remember" | "forget"; text: string; undone?: boolean };
+export type MemoryItem = { id: number; kind: "memory"; op: "remember" | "forget"; text: string; undone?: boolean; projectId?: string }; // projectId：記在專案記憶
 export type PageItem = { id: number; kind: "page"; title: string; url: string; tabId: number };
 // 額度用完（402 quota_exceeded）或方案不含所選模型（402 model_not_in_plan，why: "model"）：對話裡顯示說明與升級按鈕
 export type QuotaItem = { id: number; kind: "quota"; why?: "model" };
@@ -49,7 +50,9 @@ export const S = {
   summarizePages: true, // read_url 讀到的頁面先用 Haiku 依問題整理；A/B 量成本時在 devtools 跑 chrome.storage.local.set({ summarizePages: false })（側邊欄重開生效）
   memories: [] as string[],
   skills: [] as Skill[],
-  chats: [] as Chat[], // 對話歷史，見 history.ts
+  projects: [] as Project[], // 見 projects.ts；檔案內容不在這裡（一檔一個 storage key）
+  projectId: null as string | null, // 目前專案：新對話開在它底下，系統提示詞帶它的指示、檔案清單與記憶。任務進行中不能切
+  chats: [] as ChatMeta[], // 對話歷史的索引（內容另存在 chat:<id>），見 history.ts
   chatId: null as string | null, // 目前這段對話在 chats 裡的 id；新對話在第一次存檔時才建立
   messages: [] as Message[], // 目前對話，送給 API 的格式
   sources: [] as Source[], // 目前對話的研究來源，[n]＝第 n 個（存進歷史；回答裡的 [n] 照它變成連結）

@@ -11,13 +11,14 @@ Browser Agent is an open-source Chrome extension (MIT license): an AI agent in y
 
 Stored only in your browser, in `chrome.storage.local`:
 
-- **Your conversations** (the last 30), including page text that was part of them, the titles and addresses of research sources, and files the assistant created
+- **Your conversations** (the last 30 of each project, up to 100 in total), including page text that was part of them, the titles and addresses of research sources, and files the assistant created
 - **Memories**: short facts you asked it to remember
+- **Projects**: each project's name, instructions, memories and skill choice, and the files you upload to it (stored as their extracted text)
 - **Skills** (including the text files bundled with skills you import or install) **and settings** (model, language, theme, etc.)
 - **Your API key(s)** and endpoint addresses, if you use your own key
 - **A device token**: a random code that identifies this installation to Browser Agent Cloud
 
-You can delete conversations and memories in the extension at any time. Removing the extension deletes all of it from your computer.
+You can delete conversations, memories, project files and projects in the extension at any time. Removing the extension deletes all of it from your computer.
 
 ## What a request to the AI model contains
 
@@ -29,6 +30,7 @@ In either mode, a request can contain:
 - The content of a PDF you asked it to read. A scanned PDF with no text layer is sent as images to **Anthropic (Claude)** specifically, and only after you click "Allow" on a confirmation card that tells you it will cost more than reading text
 - When researching: search results (titles, addresses and snippets) and summaries or text of the pages it read (see *Research* below)
 - Your saved memories and the names and descriptions of your skills
+- If the chat is in a project: the project's name, instructions and memories, and the names of its files. The text of a project file is sent only when the assistant opens that file for your request
 
 Page content is read and sent only when you ask the assistant to do something, except for home suggestions (below).
 
@@ -113,13 +115,14 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 
 以下資料只存在你電腦上的瀏覽器裡（`chrome.storage.local`）：
 
-- **你的對話**（最近 30 則），包含對話中出現的網頁文字、研究來源的標題與網址，以及助理幫你產生的檔案
+- **你的對話**（每個專案最近 30 則，全部最多 100 則），包含對話中出現的網頁文字、研究來源的標題與網址，以及助理幫你產生的檔案
 - **記憶**：你要它記住的簡短事實
+- **專案**：每個專案的名稱、指示、記憶、技能選擇，以及你上傳的檔案（存成抽出來的文字）
 - **技能**（包含你匯入或安裝的技能附帶的文字檔）與設定（模型、語言、主題等）
 - **你的 API 金鑰**與端點網址（如果你用自己的金鑰）
 - **裝置代碼**：一組隨機代碼，讓 Browser Agent Cloud 認得這個安裝
 
-你隨時可以在擴充功能裡刪除對話與記憶；移除擴充功能就會把這些資料從你的電腦上全部刪除。
+你隨時可以在擴充功能裡刪除對話、記憶、專案檔案與專案；移除擴充功能就會把這些資料從你的電腦上全部刪除。
 
 ## 送給 AI 模型的請求包含什麼
 
@@ -131,6 +134,7 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 - 你要求它讀取的 PDF 內容。沒有文字層的掃描 PDF 會以圖片送給 **Anthropic（Claude）**，而且一定要等你在確認卡片按下「允許」之後才會送——卡片會先告訴你這比讀文字貴
 - 研究時：搜尋結果（標題、網址、摘要），以及讀過頁面的整理或原文（見下方「研究」）
 - 你存的記憶，以及技能的名稱與說明
+- 對話在專案裡時：專案的名稱、指示、記憶，以及檔案的名稱。專案檔案的內容只有在助理為了你的要求打開那個檔案時才會送出
 
 除了首頁建議（見下方），只有在你要求助理做事時，才會讀取並送出頁面內容。
 

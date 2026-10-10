@@ -12,6 +12,6 @@
   },
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },
-  "permissions": ["sidePanel", "storage", "scripting", "tabs", "webRequest", "identity"],
+  "permissions": ["sidePanel", "storage", "unlimitedStorage", "scripting", "tabs", "webRequest", "identity"],
   "host_permissions": ["<all_urls>"]
 }

@@ -2,6 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { systemPrompt, tools, MEMORY_TOOLS, CARD_TOOLS, newTask, type Summarizer } from "./shared";
 import { memoryPrompt } from "./memory";
+import { currentProject, projectPrompt, projectSkills, type Project } from "./projects";
 import { skillsPrompt, expandSlash, slashSkill, skillModel, untrustedSkill, thirdPartyListed, LEGACY_SOURCE, type Skill } from "./skills";
 import { HAIKU, migrateModel } from "./models";
 import { cloudModels } from "./cloud-models";
@@ -10,7 +11,7 @@ import { PROVIDERS, ANTHROPIC_MODELS, ProviderError, activeProvider, conf, curre
 import { defaultSuggestOn, detectMode, type Mode } from "./mode";
 import { PAGE_TOOLS, ACTION_TOOLS, type Usage, charsOf, baHeaders, isQuota, isModelNotInPlan } from "./usage";
 import { BACKEND, BackendError, authFetch, fetchMe, getToken } from "./backend";
-import { chatTitle, upsertChat, displayText, selectionOf, withSelection, stripDocuments, type Chat, type Block } from "./history";
+import { chatTitle, chatKey, trimChats, upsertChat, displayText, selectionOf, withSelection, stripDocuments, stripProjectFiles, type Chat, type ChatBody, type ChatMeta, type Block } from "./history";
 import { refreshSelection, takeSelection } from "./selection";
 import { S, emit, emitSoon, addItem, removeItem, type MdItem, type ThinkingItem, type ToolItem, type NoteItem, type StatsItem, type Suggestion, type AskItem, type AskInput } from "./store";
 import { activeTab, inPage, runTool } from "./tools";
@@ -44,16 +45,28 @@ export async function refreshMe() {
 
 export const persist = (patch: Record<string, unknown>) => chrome.storage.local.set(patch);
 
+// 只寫目前這段對話的內容（chat:<id>）＋索引；被擠出上限的那幾段連內容一起刪
 export async function saveChat() {
   if (!S.messages.length) return;
   S.chatId ??= Date.now().toString(36);
-  S.chats = upsertChat(S.chats, { id: S.chatId, title: chatTitle(S.messages), updated: Date.now(), messages: stripDocuments(S.messages), ...(S.chatModel ? { model: S.chatModel } : {}), ...(S.sources.length ? { sources: S.sources } : {}) });
+  const meta: ChatMeta = { id: S.chatId, title: chatTitle(S.messages), updated: Date.now(), ...(S.chatModel ? { model: S.chatModel } : {}), ...(S.projectId ? { projectId: S.projectId } : {}) };
+  const body: ChatBody = { messages: stripProjectFiles(stripDocuments(S.messages)), ...(S.sources.length ? { sources: S.sources } : {}) };
+  const before = S.chats;
+  S.chats = upsertChat(S.chats, meta);
+  const dropped = before.filter((c) => !S.chats.some((x) => x.id === c.id));
   emit();
   try {
-    await persist({ chats: S.chats });
+    await persist({ [chatKey(meta.id)]: body, chats: S.chats });
+    if (dropped.length) await chrome.storage.local.remove(dropped.map((c) => chatKey(c.id)));
   } catch {
     addItem<NoteItem>({ kind: "error", text: t("chat.saveFailed") });
   }
+}
+
+export async function loadChat(meta: ChatMeta): Promise<Chat> {
+  const k = chatKey(meta.id);
+  const body = (await chrome.storage.local.get(k))[k] as ChatBody | undefined;
+  return { ...meta, messages: body?.messages ?? [], ...(body?.sources ? { sources: body.sources } : {}) };
 }
 
 let controller: AbortController | null = null; // 按「停止」時中止整個 agent 迴圈（串流中或跑工具中都算）
@@ -199,16 +212,24 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
   const usage: Usage = { pages: 0, actions: 0, chars: 0, searches: 0 };
   const readLimit = readChars(); // 這個任務讀頁字數的上限；cloud 每次呼叫都帶 x-ba-read-chars
 
-  S.messages.push({ role: "user", content: userText });
+  // 這個任務只寫這一份對話：任務中打開別段對話（openChat 換掉 S.messages）時，跑到一半的工具結果不能寫進新打開的那段
+  const msgs = S.messages;
+  msgs.push({ role: "user", content: userText });
   // 系統提示詞與工具在這一輪固定：中途 remember 寫入不會改到它，否則快取整段失效，模型也會以為「早就記得」
-  const system = systemPrompt(langEnglishName()) + skillsPrompt(S.skills) + (S.memoryOn ? memoryPrompt(S.memories) : "");
-  // 截圖只給 Anthropic：OpenAI 相容的 tool 訊息只收文字，圖會被丟掉
-  const turnTools = tools.filter((x) => (S.memoryOn || !MEMORY_TOOLS.includes(x.name)) && (provider === "anthropic" || x.name !== "screenshot"));
+  // 專案也在這時釘住（任務進行中切換器停用）：指示、檔案清單、專案記憶、只開它指定的技能
+  const project = currentProject();
+  const skills = projectSkills(S.skills, project);
+  const system = systemPrompt(langEnglishName()) + (project ? projectPrompt(project) : "") + skillsPrompt(skills)
+    + (S.memoryOn ? memoryPrompt(S.memories, project ? { name: project.name, memories: project.memories } : undefined) : "");
+  // 截圖只給 Anthropic：OpenAI 相容的 tool 訊息只收文字，圖會被丟掉；沒有專案檔案就不給 read_project_file
+  const turnTools = tools.filter((x) => (S.memoryOn || !MEMORY_TOOLS.includes(x.name)) && (provider === "anthropic" || x.name !== "screenshot") && (x.name !== "read_project_file" || !!project?.files.length));
   const startTab = await activeTab();
   const tabId = startTab.id!;
   // 這則對話裡已經有網頁來的內容（之前讀過頁面、這則或之前附了選取文字）或第三方技能的指示（系統提示詞裡的說明、/名稱 展開、use_skill 的結果）＝一開始就算不可信
-  const tainted = typed === null || thirdPartyListed(S.skills) || S.messages.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
+  // 專案檔案（read_project_file）也是不可信的內容
+  const tainted = typed === null || thirdPartyListed(skills) || msgs.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot", "read_project_file"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
   const task = newTask(startTab.url, typed ?? "", tainted, cloud ? readLimit : undefined); // cloud：任務開始時釘住；byok 照舊即時讀 S.pageChars
+  if (project) task.projectId = project.id;
   if (!task.question) task.question = userText.slice(0, 500); // 首頁建議：沒有使用者打的字，用建議的提示詞
   if (provider === "anthropic" && S.summarizePages) task.summarize = summarizer(cloud, () => (cloud ? baHeaders("task", session, usage, readLimit) : undefined), stats);
 
@@ -232,7 +253,8 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
     if (msg.usage.usd != null) stats.usd = (stats.usd ?? 0) + msg.usage.usd;
 
     if (msg.stop_reason === "refusal") throw new Error(t("error.refusal"));
-    S.messages.push({ role: "assistant", content: msg.content });
+    signal.throwIfAborted();
+    msgs.push({ role: "assistant", content: msg.content });
     if (msg.stop_reason === "pause_turn") continue;
 
     const uses = msg.content.filter((b) => b.type === "tool_use");
@@ -272,8 +294,9 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
       capped = true;
       results.push({ type: "text", text: `（系統：已達單次任務 ${MAX_STEPS} 步的上限。停止操作，用幾句話告訴使用者做到哪裡、還差什麼；使用者回覆後可以接著做。）` });
     }
-    S.messages.push({ role: "user", content: results });
-    saveChat(); // 每一步都存：任務做到一半關掉側邊欄，歷史裡還留著進度
+    signal.throwIfAborted();
+    msgs.push({ role: "user", content: results });
+    saveChat(); // 每一步都存：任務做到一半關掉側邊欄，歷史裡還留著進度（中止過就不會走到這裡）
   }
 }
 
@@ -320,7 +343,8 @@ export async function send(raw: string, { fromPage = false } = {}) {
   const signal = controller.signal;
   const selection = await takeSelection();
   addItem({ kind: "user", text, ...(selection ? { selection } : {}) });
-  const start = S.messages.length;
+  const msgs = S.messages; // 任務中打開別段對話會換掉 S.messages：下面的復原與存檔只對這一份做
+  const start = msgs.length;
   const cloud = S.mode === "cloud";
   const stats: Stats = { steps: 0, calls: 0, input: 0, cached: 0, output: 0 };
   try {
@@ -329,19 +353,23 @@ export async function send(raw: string, { fromPage = false } = {}) {
     const expanded = expandSlash(text, S.skills);
     await runApi(selection ? withSelection(expanded, selection, readChars()) : expanded, fromPage ? null : text, stats, signal, override);
   } catch (err: any) {
-    if (S.messages.length > start) S.messages.length = start; // 丟掉這一輪，避免留下沒配對 tool_result 的 tool_use
-    S.log = S.log.filter((x) => x.kind !== "pending");
-    for (const x of S.log) if (x.kind === "thinking" && x.state === "running") x.state = "interrupted";
-    if (cloud && !signal.aborted && isQuota(err)) addItem({ kind: "quota" }); // 額度用完：說明＋升級按鈕，不是原始錯誤
-    // 方案不含所選的模型：同一張卡換文字。任務結束時 addStats 會重抓 /v1/me（stats.calls ≥ 1），選單的清單與鎖頭跟著更新
-    else if (cloud && !signal.aborted && isModelNotInPlan(err)) addItem({ kind: "quota", why: "model" });
-    else addItem<NoteItem>({ kind: "error", text: signal.aborted ? t("chat.stopped") : friendly(err) });
+    if (msgs.length > start) msgs.length = start; // 丟掉這一輪，避免留下沒配對 tool_result 的 tool_use
+    if (S.messages === msgs) { // 換成別段對話了（任務中打開歷史、開新對話）：畫面上的不是這個任務，不要把「已停止」加進去
+      S.log = S.log.filter((x) => x.kind !== "pending");
+      for (const x of S.log) if (x.kind === "thinking" && x.state === "running") x.state = "interrupted";
+      if (cloud && !signal.aborted && isQuota(err)) addItem({ kind: "quota" }); // 額度用完：說明＋升級按鈕，不是原始錯誤
+      // 方案不含所選的模型：同一張卡換文字。任務結束時 addStats 會重抓 /v1/me（stats.calls ≥ 1），選單的清單與鎖頭跟著更新
+      else if (cloud && !signal.aborted && isModelNotInPlan(err)) addItem({ kind: "quota", why: "model" });
+      else addItem<NoteItem>({ kind: "error", text: signal.aborted ? t("chat.stopped") : friendly(err) });
+    }
   } finally {
     controller = null;
     S.busy = false;
     emit();
-    saveChat();
-    addStats(stats, cloud);
+    if (S.messages === msgs) {
+      saveChat();
+      addStats(stats, cloud);
+    } else if (cloud && stats.calls) refreshMe(); // 已經換成別段對話：不加統計列，點數照樣重抓
   }
 }
 
@@ -360,11 +388,15 @@ export function resetChat() {
 }
 
 // 把存下來的 messages 畫回畫面（思考摘要不重畫，省得對話變很長）
-export function openChat(chat: Chat) {
+export async function openChat(meta: ChatMeta) {
   controller?.abort();
+  const chat = await loadChat(meta); // 中止的任務在這段等待裡收尾（存檔、加「已停止」都還是對它自己那段）
   S.messages = structuredClone(chat.messages);
   S.sources = structuredClone(chat.sources ?? []);
   S.chatId = chat.id;
+  // 回到它的專案（專案刪掉了就當不在專案）：接著聊照它的專案組系統提示詞
+  const project = S.projects.find((p) => p.id === chat.projectId)?.id ?? null;
+  if (project !== S.projectId) { S.projectId = project; persist({ currentProject: project }); }
   S.chatModel = chat.model ?? "";
   S.log = [];
   const cards = new Map<string, ToolItem>(); // tool_use id → 卡片
@@ -408,11 +440,26 @@ function restoreCard(use: Block, r: Block) {
   addItem<AskItem>({ kind: "ask", input: input as AskInput, state: "answered", answer, picked });
 }
 
-export async function deleteChat(chat: Chat) {
-  S.chats = S.chats.filter((c) => c !== chat);
-  if (chat.id === S.chatId) S.chatId = null; // 畫面上的對話留著，下次送出會存成新的一筆
+// 回傳刪掉的內容：歷史頁的「復原」要放回去
+export async function deleteChat(meta: ChatMeta): Promise<Chat> {
+  const chat = await loadChat(meta);
+  S.chats = S.chats.filter((c) => c.id !== meta.id);
+  if (meta.id === S.chatId) S.chatId = null; // 畫面上的對話留著，下次送出會存成新的一筆
   emit();
   await persist({ chats: S.chats });
+  await chrome.storage.local.remove(chatKey(meta.id));
+  return chat;
+}
+
+// 復原刪掉的對話：內容與索引一起放回去（索引照原本的位置）
+export async function restoreChat(chat: Chat, index: number) {
+  if (S.chats.some((c) => c.id === chat.id)) return;
+  const { messages, sources, ...meta } = chat;
+  const list = [...S.chats];
+  list.splice(Math.min(index, list.length), 0, meta);
+  S.chats = trimChats(list);
+  emit();
+  await persist({ [chatKey(chat.id)]: { messages, ...(sources ? { sources } : {}) }, chats: S.chats });
 }
 
 export function showView() {
@@ -555,11 +602,19 @@ function upgradeBody(s: Skill): boolean {
 }
 
 export async function init() {
-  const saved: Record<string, any> = await chrome.storage.local.get(["mode", "provider", "providers", "key", "model", "effort", "skills", "pageChars", "suggestOn", "memories", "memoryOn", "summarizePages", "chats", "seededSkills", "skillSources", "lang", "consent"]);
+  const saved: Record<string, any> = await chrome.storage.local.get(["mode", "provider", "providers", "key", "model", "effort", "skills", "pageChars", "suggestOn", "memories", "memoryOn", "summarizePages", "chats", "seededSkills", "skillSources", "lang", "consent", "projects", "currentProject"]);
   setLangPref(saved.lang);
   await loadAllDicts(); // 舊版預設技能的跨語言改名比對（下面）要看得到全部字典
   S.consent = !!saved.consent; // 醒目揭露同意：舊使用者（已有 key）第一次開新版也要同意過才看得到 chat
-  S.chats = saved.chats ?? [];
+  // 舊版的 chats 每筆都帶 messages：搬成「索引＋一段一個 key」（只會發生一次）
+  const rawChats = (saved.chats ?? []) as (ChatMeta & Partial<ChatBody>)[];
+  if (rawChats.some((c) => c.messages)) {
+    const bodies = Object.fromEntries(rawChats.filter((c) => c.messages).map((c) => [chatKey(c.id), { messages: c.messages, ...(c.sources ? { sources: c.sources } : {}) }]));
+    S.chats = rawChats.map(({ messages: _m, sources: _s, ...meta }) => meta);
+    await persist({ ...bodies, chats: S.chats });
+  } else S.chats = rawChats;
+  S.projects = (saved.projects ?? []) as Project[];
+  S.projectId = S.projects.some((p) => p.id === saved.currentProject) ? saved.currentProject : null;
   S.memories = saved.memories ?? [];
   S.memoryOn = saved.memoryOn ?? true;
   S.summarizePages = saved.summarizePages ?? true;
@@ -594,6 +649,21 @@ export async function init() {
     await persist({ skills: S.skills, seededSkills: ids, skillSources: 1 });
   }
 
+  // 每個視窗的側邊欄各有一份 S：別的視窗改了專案、記憶、對話清單，這裡跟著換。內容一樣就不換：
+  // 自己剛寫的也會觸發一次，換掉會讓 tools.ts 用參照比對的「等待確認期間被改過」誤判
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    let changed = false;
+    for (const key of ["projects", "memories", "chats"] as const) {
+      if (!(key in changes)) continue;
+      const next = changes[key].newValue ?? [];
+      if (JSON.stringify(next) === JSON.stringify(S[key])) continue;
+      (S as Record<string, unknown>)[key] = next;
+      changed = true;
+    }
+    if (changed && S.projectId && !S.projects.some((p) => p.id === S.projectId)) S.projectId = null; // 目前的專案在別的視窗被刪了
+    if (changed) emit();
+  });
   chrome.tabs.onActivated.addListener(() => { scheduleSuggestions(); refreshSelection(); });
   chrome.tabs.onUpdated.addListener((_id, info, tab) => { if (tab.active && info.status === "complete") { scheduleSuggestions(); refreshSelection(); } });
   addEventListener("focus", refreshSelection); // 從網頁點回側邊欄

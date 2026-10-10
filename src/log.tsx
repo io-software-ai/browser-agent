@@ -5,7 +5,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { Source } from "./shared";
 import { S, emit, setMemories, type Item, type MdItem, type ThinkingItem, type ToolItem, type AskItem, type FileItem, type ConfirmItem, type MemoryItem, type PageItem } from "./store";
-import { forgetMemory } from "./memory";
+import { updateProject } from "./projects";
 import { t, currentLang, type Key } from "./i18n";
 import { openUpgrade } from "./pages";
 import { IconBookmark, IconCopy, IconDownload, IconErr, IconFile, IconGlobe, IconOk, IconQuestion, IconShield } from "./icons";
@@ -373,18 +373,22 @@ function ConfirmCard({ item }: { item: ConfirmItem }) {
 }
 
 function MemoryCard({ item }: { item: MemoryItem }) {
+  const project = item.projectId ? S.projects.find((p) => p.id === item.projectId) : undefined;
+  const gone = !!item.projectId && !project; // 專案已經刪了：沒有東西可以復原，也不能改到全域記憶
+  // 復原只刪完全相同的那一條（部分符合會刪到別條）
   const undo = async () => {
-    const { list } = forgetMemory(S.memories, item.text);
-    if (list !== S.memories) await setMemories(list);
+    const before = project ? project.memories : S.memories;
+    const list = before.filter((m) => m !== item.text);
+    if (list.length !== before.length) await (project ? updateProject(project.id, { memories: list }) : setMemories(list));
     item.undone = true;
     emit();
   };
-  const title = item.op === "forget" ? t("card.forgotten") : item.undone ? t("card.memoryUndone") : t("card.remembered");
+  const title = item.op === "forget" ? t("card.forgotten") : item.undone ? t("card.memoryUndone") : project ? t("card.rememberedProject", { name: project.name }) : t("card.remembered");
   return (
     <div className="chat-card memory-card" data-undone={item.undone ? "" : undefined}>
       <IconBookmark />
       <span className="memory-text"><small>{title}</small>{item.text}</span>
-      {item.op === "remember" && !item.undone && <button type="button" className="btn btn-ghost sm memory-undo" onClick={undo}>{t("common.undo")}</button>}
+      {item.op === "remember" && !item.undone && !gone && <button type="button" className="btn btn-ghost sm memory-undo" onClick={undo}>{t("common.undo")}</button>}
     </div>
   );
 }

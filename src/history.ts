@@ -1,13 +1,20 @@
-// 對話歷史：存在 chrome.storage.local 的 chats，每筆是 { id, title, updated, messages }（messages 就是送給 API 的格式，還原後可以接著聊）
+// 對話歷史：chrome.storage.local 的 chats 是索引（ChatMeta：標題、時間、所屬專案），每段對話的內容另存在 chat:<id>
+// （messages 就是送給 API 的格式，還原後可以接著聊；sources 是研究來源）。saveChat 每一步只重寫目前這段，不用整包重寫。
+// 舊版的 chats 每筆都帶 messages：init 第一次讀到時搬成這個格式
 import { t, currentLang } from "./i18n";
+import { splitAttachments } from "./attachments";
 
-export const MAX_CHATS = 30; // ponytail: 超過就丟最舊的；一筆含讀頁結果可能上百 KB，storage.local 上限 10MB
+export const MAX_CHATS = 30; // 每個專案（與不在專案的）各留最新的 30 段，超過就丟最舊的
+export const chatKey = (id: string) => `chat:${id}`;
 
 // ponytail: 只寫出這裡讀得到的欄位；實際內容是 Anthropic API 的 message 格式
 export type Block = { type: string; text?: string; name?: string; input?: unknown; id?: string; tool_use_id?: string; content?: unknown; is_error?: boolean };
 export type Message = { role: "user" | "assistant"; content: string | Block[] };
 // model：存檔時用的模型名稱（匯出 Markdown 的助理標題用；舊紀錄沒有）
-export type Chat = { id: string; title: string; updated: number; messages: Message[]; model?: string; sources?: { url: string; title: string }[] }; // sources：研究來源（舊紀錄沒有）
+// projectId：所屬專案（專案刪掉後留著，當成不在專案）；model：存檔時用的模型名稱（匯出用）。舊紀錄都沒有
+export type ChatMeta = { id: string; title: string; updated: number; model?: string; projectId?: string };
+export type ChatBody = { messages: Message[]; sources?: { url: string; title: string }[] };
+export type Chat = ChatMeta & ChatBody;
 
 // 頁面上選取的文字附在使用者訊息最後面。這個格式也是歷史紀錄的一部分，不要改（displayText／selectionOf 靠它還原）
 const SEL_RE = /\n\n<page_selection chars="(\d+)">\n([\s\S]*)\n<\/page_selection>\n[^\n]*$/;
@@ -41,7 +48,7 @@ export function stripDocuments(messages: Message[]): Message[] {
 // 這個格式是歷史紀錄的一部分：舊歷史要能還原，不要改
 export function displayText(content: Message["content"]): string | null {
   if (typeof content !== "string") return null; // 陣列是 tool_result，不是使用者打的字
-  content = content.replace(SEL_RE, "");
+  content = splitAttachments(content).rest.replace(SEL_RE, ""); // 前面的附件、後面的選取內容都不是使用者打的
   const m = content.match(/^使用技能「(.+?)」，完整指示已附在下面[\s\S]*?<\/skill>\n\n([\s\S]*)$/);
   if (!m) return content;
   return `/${m[1]}${m[2].startsWith("（沒有補充說明") ? "" : ` ${m[2]}`}`;
@@ -53,9 +60,30 @@ export function chatTitle(messages: Message[]) {
   return line.length > 40 ? line.slice(0, 40) + "…" : line;
 }
 
+// 每個專案各留最新的 MAX_CHATS 段（順序照舊：新的在前）
+export function trimChats<T extends { projectId?: string }>(chats: T[]) {
+  const seen = new Map<string, number>();
+  return chats.filter((c) => {
+    const n = (seen.get(c.projectId ?? "") ?? 0) + 1;
+    seen.set(c.projectId ?? "", n);
+    return n <= MAX_CHATS;
+  });
+}
+
 // 新的放最前面，同 id 取代舊的
-export function upsertChat(chats: Chat[], chat: Chat) {
-  return [chat, ...chats.filter((c) => c.id !== chat.id)].slice(0, MAX_CHATS);
+export function upsertChat<T extends { id: string; projectId?: string }>(chats: T[], chat: T) {
+  return trimChats([chat, ...chats.filter((c) => c.id !== chat.id)]);
+}
+
+// 讀過的專案檔案內容不存進歷史（tool_use 留著：重開這段對話照樣算不可信）。刪掉專案或檔案之後，歷史裡不會還留著它的全文
+export function stripProjectFiles(messages: Message[]): Message[] {
+  const ids = new Set(messages.flatMap((m) => (typeof m.content === "string" ? [] : m.content.filter((b) => b.type === "tool_use" && b.name === "read_project_file" && (b.input as { name?: unknown } | undefined)?.name).map((b) => b.id!))));
+  const hit = (b: Block) => b.type === "tool_result" && !b.is_error && ids.has(b.tool_use_id!);
+  if (!ids.size) return messages;
+  return messages.map((m) => (typeof m.content === "string" || !m.content.some(hit) ? m : {
+    ...m,
+    content: m.content.map((b) => (hit(b) ? { ...b, content: "（專案檔案的內容沒有存進歷史；需要時重新 read_project_file）" } : b)),
+  }));
 }
 
 export function toMarkdown(chat: Chat) {

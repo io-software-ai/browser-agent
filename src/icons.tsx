@@ -21,6 +21,7 @@ export const IconGear = () => (
 );
 export const IconClose = () => <Svg sw={1.5}><path d="M4 4l8 8M12 4l-8 8" /></Svg>;
 export const IconChevron = () => <Svg sw={1.6} join><path d="M6 3.5L10.5 8 6 12.5" /></Svg>;
+export const IconChevronDown = () => <Svg sw={1.6} join><path d="M4 6l4 4 4-4" /></Svg>;
 export const IconSend = () => <svg className="i-send" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" /></svg>;
 export const IconStop = () => <svg className="i-stop" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1.5" /></svg>;
 export const IconCopy = () => (
