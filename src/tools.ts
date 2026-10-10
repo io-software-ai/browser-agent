@@ -508,11 +508,11 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       let dest: URL;
       try { dest = new URL(input.url); } catch { throw new Error("網址格式不對"); }
       denyBackend(dest);
-      // 網址本身就能把資料帶出去（/c?d=對話內容）。直接去：使用者給的、搜尋結果與讀過頁面裡的網址，以及使用者這則訊息裡打的網站（目的地是使用者選的）。
-      // 其他 agent 自己組的網址：讀過網頁之後一律問，任務起始的網站與允許過的網站也問（使用者正在看的網站可能就是攻擊者的）；
-      // 還沒讀過網頁時只問允許清單以外的網站。卡片上顯示完整網址
-      const userSite = [...task.typedUrls].some((x) => new URL(x).origin === dest.origin);
-      if (!knownUrl(dest, task) && !userSite && (task.tainted || !task.origins.has(dest.origin))) {
+      // 網址本身就能把資料帶出去（/c?d=對話內容）。直接去：使用者給的、搜尋結果與讀過頁面裡的網址（完全相同的網址）。
+      // 其他 agent 自己組的網址：讀過網頁或檔案之後一律問——任務起始的網站、允許過的網站、使用者訊息裡提到的網站也問
+      // （那個網站可能就是攻擊者的：使用者請它比對某個報價頁，報價頁的注入就能叫 agent 把專案檔案塞進同站的網址帶走）；
+      // 還沒讀過任何內容時只問允許清單以外的網站（使用者訊息裡提到的網站在清單裡）。卡片上顯示完整網址
+      if (!knownUrl(dest, task) && (task.tainted || !task.origins.has(dest.origin))) {
         const text = t(task.origins.has(dest.origin) ? "confirm.navigateBuilt" : "confirm.navigate");
         if (!(await confirm({ label: dest.hostname, submitting: false, host: dest.hostname, text, detail: displayUrl(dest.href) }, signal))) throw new Error(DENIED);
         task.origins.add(dest.origin);
