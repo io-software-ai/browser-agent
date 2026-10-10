@@ -418,6 +418,15 @@ const fr: Dict = {
   "confirm.forgetProject": "L’agent veut supprimer ce souvenir du projet « {name} ». Cette conversation a lu du contenu web ou des fichiers, qui ont pu le lui demander :",
   "project.memoryOff": "La mémoire est désactivée (Paramètres → Mémoire) : ces souvenirs ne sont pas envoyés à l’agent pour l’instant.",
   "card.rememberedProject": "Mémorisé dans {name}",
+  "composer.attach": "Joindre des fichiers",
+  "composer.attachDefault": "Voici les fichiers joints.",
+  "attach.remove": "Retirer {name}",
+  "attach.save": "Enregistrer dans le projet « {name} »",
+  "attach.saved": "Enregistré dans le projet",
+  "attach.errTooMuch": "{name} n’a pas été joint : les fichiers d’un message ne peuvent pas dépasser {max} caractères au total. Enregistrez plutôt les gros fichiers dans un projet : l’agent les lira au besoin.",
+  "attach.errCount": "Vous pouvez joindre jusqu’à {max} fichiers par message.",
+  "attach.drop": "Déposez pour joindre les fichiers",
+  "history.attachments": "Pièces jointes : {names}",
 };
 
 export default fr;

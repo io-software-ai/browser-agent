@@ -9,7 +9,7 @@ import type { Me } from "./backend";
 import type { Mode } from "./mode";
 import type { Source } from "./shared";
 
-export type UserItem = { id: number; kind: "user"; text: string; selection?: string }; // selection：這則附帶的頁面選取內容
+export type UserItem = { id: number; kind: "user"; text: string; selection?: string; files?: { name: string; chars: number }[] }; // selection：這則附帶的頁面選取內容；files：附加的檔案
 export type NoteItem = { id: number; kind: "error" | "note"; text: string };
 export type StatsItem = { id: number; kind: "stats"; text: string; title: string };
 export type MdItem = { id: number; kind: "md"; text: string; done: boolean };
@@ -64,6 +64,8 @@ export const S = {
   toast: null as { id: number; text: string; undo: () => void } | null, // 底部「已刪除 · 復原」，5 秒後消失
   asking: null as AskItem | null, // ask_user 等待回答中：這時在輸入框送出的文字就是答案
   selection: null as string | null, // 目前分頁上選取的文字（輸入框上方的標籤），見 selection.ts
+  attachments: [] as { id: number; name: string; text: string; saved?: boolean }[], // 聊天框附加、還沒送出的檔案（已經轉成文字），見 attachments.ts；saved：已經存進目前的專案
+  attachError: "", // 附加檔案失敗的說明（顯示在輸入框下面；下次附加或送出時清掉）
   pdfTab: null as string | null, // 目前分頁是 Chrome 內建檢視器開的 PDF：顯示「在檢視器開啟」
   chatModel: "", // 這段對話最後用的模型名稱，存進歷史給匯出用
 };

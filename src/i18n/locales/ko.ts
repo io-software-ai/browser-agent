@@ -405,6 +405,15 @@ const ko: Dict = {
   "confirm.forgetProject": "에이전트가 프로젝트 “{name}”에서 이 메모리를 삭제하려고 합니다. 이 대화에서 웹 콘텐츠나 파일을 읽었으므로 그쪽에서 요청한 것일 수 있습니다:",
   "project.memoryOff": "메모리가 꺼져 있어서(설정 → 메모리) 지금은 이 내용이 에이전트에게 전달되지 않아요.",
   "card.rememberedProject": "“{name}”에 기억함",
+  "composer.attach": "파일 첨부",
+  "composer.attachDefault": "첨부한 파일을 봐 주세요.",
+  "attach.remove": "{name} 제거",
+  "attach.save": "프로젝트 “{name}”에 저장",
+  "attach.saved": "프로젝트에 저장됨",
+  "attach.errTooMuch": "{name}은(는) 첨부되지 않았습니다. 한 메시지의 첨부 파일은 합계 {max}자까지입니다. 큰 파일은 프로젝트에 저장해 두면 에이전트가 필요할 때 읽어요.",
+  "attach.errCount": "한 메시지에 파일을 {max}개까지 첨부할 수 있어요.",
+  "attach.drop": "놓으면 파일이 첨부돼요",
+  "history.attachments": "첨부: {names}",
 };
 
 export default ko;

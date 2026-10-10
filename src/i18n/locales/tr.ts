@@ -418,6 +418,15 @@ const tr: Dict = {
   "confirm.forgetProject": "Ajan bu anıyı “{name}” projesinden silmek istiyor. Bu sohbet web içeriği veya dosya okudu; bunu isteyen onlar olabilir:",
   "project.memoryOff": "Bellek kapalı (Ayarlar → Bellek), bu yüzden bunlar şu anda ajana gönderilmiyor.",
   "card.rememberedProject": "{name} projesinde hatırlandı",
+  "composer.attach": "Dosya ekle",
+  "composer.attachDefault": "Ekteki dosyalara bakar mısın?",
+  "attach.remove": "{name} öğesini kaldır",
+  "attach.save": "“{name}” projesine kaydet",
+  "attach.saved": "Projeye kaydedildi",
+  "attach.errTooMuch": "{name} eklenmedi: bir mesajdaki dosyalar toplam en fazla {max} karakter olabilir. Büyük dosyaları bir projeye kaydedin; ajan gerektiğinde okur.",
+  "attach.errCount": "Bir mesaja en fazla {max} dosya ekleyebilirsiniz.",
+  "attach.drop": "Dosyaları eklemek için bırakın",
+  "history.attachments": "Ekler: {names}",
 };
 
 export default tr;

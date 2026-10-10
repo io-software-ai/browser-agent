@@ -418,6 +418,15 @@ const zhTW: Dict = {
   "confirm.forgetProject": "Agent 想從專案「{name}」刪掉這條記憶。這次對話讀過網頁或檔案，可能是那些內容要它刪的：",
   "project.memoryOff": "記憶已經關閉（設定 → 記憶），這些記憶目前不會送給 Agent。",
   "card.rememberedProject": "已記在「{name}」",
+  "composer.attach": "附加檔案",
+  "composer.attachDefault": "請看附加的檔案。",
+  "attach.remove": "移除 {name}",
+  "attach.save": "存進專案「{name}」",
+  "attach.saved": "已存進專案",
+  "attach.errTooMuch": "{name} 沒有附加：一則訊息的附件合計最多 {max} 字。大的檔案請存進專案，Agent 需要時會自己讀。",
+  "attach.errCount": "一則訊息最多附加 {max} 個檔案。",
+  "attach.drop": "放開就會附加檔案",
+  "history.attachments": "附件：{names}",
 };
 
 export default zhTW;

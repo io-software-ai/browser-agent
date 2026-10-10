@@ -418,6 +418,15 @@ const es: Dict = {
   "confirm.forgetProject": "El agente quiere borrar este recuerdo del proyecto «{name}». Esta conversación ha leído contenido web o archivos, que podrían habérselo pedido:",
   "project.memoryOff": "La memoria está desactivada (Ajustes → Memoria), así que estos recuerdos no se envían al agente por ahora.",
   "card.rememberedProject": "Recordado en {name}",
+  "composer.attach": "Adjuntar archivos",
+  "composer.attachDefault": "Mira los archivos adjuntos, por favor.",
+  "attach.remove": "Quitar {name}",
+  "attach.save": "Guardar en el proyecto «{name}»",
+  "attach.saved": "Guardado en el proyecto",
+  "attach.errTooMuch": "No se adjuntó {name}: los archivos de un mensaje pueden sumar como máximo {max} caracteres. Guarda los archivos grandes en un proyecto y el agente los leerá cuando los necesite.",
+  "attach.errCount": "Puedes adjuntar hasta {max} archivos por mensaje.",
+  "attach.drop": "Suelta para adjuntar los archivos",
+  "history.attachments": "Adjuntos: {names}",
 };
 
 export default es;

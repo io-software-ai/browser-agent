@@ -31,6 +31,7 @@
 **Sayfa üzerinde işlem yapma**
 - Araçlar: sayfayı okuma, tıklama, yazma (`<select>` açılır menüleri dahil), kaydırma, bir URL açma. Modele numaralandırılmış etkileşimli öğeler listesi verilir ve CSS seçicisi tahmin etmek yerine `ref: 12` şeklinde tıklar.
 - Sayfada metin seçip sadece onunla ilgili soru sorun; seçim, tüm sekme yerine mesajınıza eklenir.
+- Mesaja dosya ekleme: metin dosyalarını, kodu veya PDF'leri sürükleyip bırakın, yapıştırın ya da seçin; metinleri, yazdıklarınızla birlikte gönderilir.
 - PDF'ler: metin pdf.js ile çıkarılır. Yerleşik görüntüleyici, bir PDF'de tıpkı normal bir sayfada olduğu gibi metin seçmenizi sağlar. Taranmış PDF'ler (metin katmanı olmayan) maliyeti onayladıktan sonra bir belge olarak Claude'a gönderilebilir.
 - Ana ekran: bulunduğunuz sayfaya göre öneriler.
 
@@ -45,8 +46,9 @@
 - Dosya kartları: sonuçlar indirilebilir `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` veya `vcf` dosyaları olarak, kopyalama ve önizlemeyle birlikte.
 
 **Size ait, saklanır**
+- Projeler: bir projeye kendi talimatlarını, dosyalarını ve hafızasını verin, hangi becerileri kullanacağını seçin. Projedeki her sohbet projenin talimatlarıyla başlar; ajan proje dosyalarını yalnızca gerektiğinde açar.
 - Hafıza: "şunu hatırla …" deyin, sohbetler arasında sizinle ilgili kısa bilgileri saklar. Ayarlar'da görüntüleyin, düzenleyin veya kapatın.
-- Geçmiş: son 30 konuşma, tarihe göre gruplanmış. Birini yeniden açıp devam edin veya Markdown olarak dışa aktarın.
+- Geçmiş: her projenin son 30 konuşması, tarihe göre gruplanmış. Birini yeniden açıp devam edin veya Markdown olarak dışa aktarın.
 - 12 yerleşik beceri ve `/` komutları; kendinizinkini yazın ya da GitHub, skills.sh veya ClawHub'dan [Agent Skills](https://agentskills.io/specification) (Claude Code'un kullandığı `SKILL.md` formatı) yükleyin.
 - 15 dilde arayüz; açık ve koyu tema sisteminizi takip eder.
 
@@ -177,7 +179,7 @@ Sistem prompt'una yalnızca isimler ve açıklamalar girer; model, ihtiyaç duyd
 
 ## Güvenlik ve gizlilik
 
-**Veri akışı.** Modele giden bir istek; mesajlarınızı, ajanın okuduğu sayfa içeriğini (veya sadece seçiminizi, ya da PDF'i), araştırdığı sayfaların özetlerini, kayıtlı hafızalarınızı ve beceri adlarınızı içerir.
+**Veri akışı.** Modele giden bir istek; mesajlarınızı, ajanın okuduğu sayfa içeriğini (veya sadece seçiminizi, ya da PDF'i), araştırdığı sayfaların özetlerini, kayıtlı hafızalarınızı ve beceri adlarınızı içerir. Bir projede ayrıca projenin talimatlarını ve hafızasını da içerir; mesaja eklediğiniz dosyalar ve ajanın açtığı proje dosyaları da gönderilir.
 
 - *Cloud modu* bu isteği Browser Agent Cloud sunucusuna gönderir; sunucu onu model sağlayıcısına iletir ve yanıtı akış olarak geri verir. Sunucu, kredileri saymak için kullanım kayıtları tutar — bir görevin hangi modeli, kaç token, sayfa, arama ve krediyi kullandığı. Mesajlarınızı, sayfa içeriğini veya modelin yanıtlarını saklamaz; model sağlayıcısı bir hata döndürürse, o hata mesajı hata ayıklama için kullanım kaydıyla birlikte tutulabilir.
 - *Kendi anahtarınız* istekleri doğrudan tarayıcınızdan sağlayıcınıza gönderir. Görevlerinizle ilgili hiçbir şey Browser Agent'ın sunucularına gitmez; tek temas, eklenti kurulduğunda yapılan anonim kayıttır.
@@ -189,9 +191,12 @@ Konuşmalarınız, hafızalarınız, becerileriniz, ayarlarınız ve her türlü
 ***İzin ver*'inizi gerektiren şeyler.** Bu işlemler yan panelde bir kart gösterir ve siz *İzin ver*'e basana kadar çalışmaz. Kart, bir web sitesinin sizin adınıza tıklayamayacağı, eklentinin kendi sayfasında bulunur:
 
 - geri alınamaz görünen tıklamalar ve form gönderimleri: düğmenin görünür metni, `aria-label`'ı, title'ı veya value'su öde, satın al, sipariş ver, sil, gönder, yayınla, yetkilendir, kaydet, paylaş, yükle ve benzerleri gibi okunuyorsa (15 arayüz dilinin tümünde); birden fazla alanı veya bir şifre alanı olan bir form; bir form içindeki yalnızca simgeli bir düğme; bir form içinde olmayan bir alanda (sohbet kutuları) Enter'a basmak. Bir düğmenin görünür metni ile `aria-label`'ı uyuşmuyorsa, kart sizi uyarır;
-- görevin başladığı site, mesajınızda belirttiğiniz bir site veya bu görevde zaten izin verdiğiniz bir site olmadıkça, sekmenizde gezinerek veya bir bağlantıya tıklayarak başka bir siteye gitmek;
+- görevin başladığı site, mesajınızda belirttiğiniz bir site veya bu görevde zaten izin verdiğiniz bir site olmadıkça, sekmenizde gezinerek veya bir bağlantıya tıklayarak başka bir siteye gitmek. Konuşma web içeriği veya dosya içerdiğinde, bu sitelerde bile, ajanın kendisinin oluşturduğu herhangi bir adrese gitmeden önce de sorar; sormadan yalnızca mesajınızdaki, arama sonuçlarındaki veya okuduğu sayfalardaki adreslerin birebir aynıları geçer;
 - adresini ajanın kendisinin oluşturduğu bir sayfayı arka planda okumak. Sormadan yalnızca arama sonuçlarındaki, daha önce okuduğu sayfalardaki bağlantıların, mesajınızdaki adreslerin ve araştırma sitelerinin (GitHub, npm) birebir aynı adreslerini okur. `localhost` veya yerel ağınızdaki sayfalar, adresi siz yazmadıkça okunmaz; arka plan sekmesinde açılan sayfalar için bu, yerel bir adrese çözümlenen genel alan adlarını da kapsar (PDF'lerde yalnızca adresin kendisi denetlenir);
-- konuşma web içeriği içerdiğinde (okuduğu bir sayfa, bir PDF, bir seçim) bir hafıza kaydetmek.
+- konuşma web içeriği veya dosya içerdiğinde, mesajınızda olmayan bir metni bir sayfaya yazmak (bir sayfa, hiçbir şey gönderilmeden bile alanlarına yazılanı okuyabilir);
+- konuşma web içeriği veya dosya içerdiğinde (okuduğu bir sayfa, bir PDF, bir seçim, bir proje dosyası veya bir ek) bir hafıza kaydetmek veya silmek.
+
+**Dosyalar web içeriği sayılır.** Bir projeye yüklediğiniz veya bir mesaja eklediğiniz dosyalar çoğu zaman web'den gelir; bu yüzden adları ve içerikleri güvenilmez sayılır: ajan birini okuduktan sonra görevin geri kalanında yukarıdaki kartlar geçerli olur ve bir dosyanın içindeki talimatlar sizin talimatlarınız gibi izlenmez. Dosya adları modelin talimatlarına konmaz.
 
 Bir adres içeren kartlar onu sorgu dizesiyle birlikte gösterir, çünkü bir adres veriyi dışarı taşıyabilir; çok uzun adresler kısaltılır, alan adı ve sorgu dizesinin başı korunur.
 
@@ -204,9 +209,9 @@ Bir öneriye tıklamak onu hemen gönderir. Sayfadan üretilen öneriler sayfa i
 - **Prompt injection çözülmüş değildir.** Ajan, oturum açtığınız hesabınızla güvenilmeyen birçok sayfayı okur. Kötü niyetli bir sayfa, konuşmanızı, hafızalarınızı veya diğer sitelerden gelen verileri bir yere göndermesi ya da sizin adınıza bir şeyler yapması için onu yönlendirmeye çalışabilir. Kartlar yukarıdaki yüksek riskli işlemleri kapsar; tam bir koruma değildir. Ajanın hangi bağlantıları izlemeyi seçtiği veya neyi aradığı üzerinden yine de az miktarda veri sızabilir.
 - Bankanız, e-postanız veya şirket yönetici panelinizle ilgili sekmeler açıkken güvenilmeyen sayfalarda araştırma yapmayın ya da görev çalıştırmayın ve bir görev çalışırken ajanı izleyin.
 - Riskli tıklamaları tespit etmek anahtar kelime ve form şekli sezgisine dayanır. Bazı düğmeleri kaçıracaktır.
-- Aynı sitedeki bir alana yazmak sormaz. Kötü niyetli bir sayfa, ajanın yazdıklarını okuyabilir (örneğin bir `input` dinleyicisiyle) ve kendi sunucusuna gönderebilir.
+- Mesajınızdaki kendi sözlerinizi bir alana yazmak sormaz. Kötü niyetli bir sayfa, ajanın yazdıklarını okuyabilir (örneğin bir `input` dinleyicisiyle) ve kendi sunucusuna gönderebilir.
 - İçe aktarılan ve yüklenen beceriler üçüncü tarafların talimatlarıdır. Biri beceri listenizdeyken (veya onu `/name` ile çağırdığınızda) her görev güvenilmez sayılır: bir anı kaydetmek, ajanın oluşturduğu bir bağlantıyı açmak ya da sizin vermediğiniz bir metni yazmak önce sizden onay ister. Bu beceriler listede *Üçüncü taraf* etiketi taşır. Kendi yazdığınız beceriler güvenilir sayılır. Bu sürümden önce eklenen becerilerin kayıtlı bir kaynağı yoktur, bu yüzden onlar da üçüncü taraf sayılır; birini kendiniz yazdıysanız açın ve **Bunu kendim yazdım** seçeneğini seçin. Yalnızca güvendiğiniz kaynaklardan beceri yükleyin.
-- Hafızalar ve konuşmalar tarayıcınızda şifrelenmeden saklanır ve her istekle birlikte modele gönderilir (Browser Agent Cloud üzerinden veya kendi sağlayıcınıza).
+- Hafızalar, projeler (dosyaları dahil) ve konuşmalar tarayıcınızda şifrelenmeden saklanır. Hafızalar ve proje talimatları her istekle birlikte modele gönderilir (Browser Agent Cloud üzerinden veya kendi sağlayıcınıza).
 
 ## Diller
 

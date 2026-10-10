@@ -405,6 +405,15 @@ const zhCN: Dict = {
   "confirm.forgetProject": "Agent 要从项目「{name}」删除这条记忆。这次对话读过网页或文件，可能是其中的内容要它删的：",
   "project.memoryOff": "记忆已关闭（设置 → 记忆），这些记忆目前不会发送给 Agent。",
   "card.rememberedProject": "已记在「{name}」",
+  "composer.attach": "附加文件",
+  "composer.attachDefault": "请看附加的文件。",
+  "attach.remove": "移除 {name}",
+  "attach.save": "存入项目「{name}」",
+  "attach.saved": "已存入项目",
+  "attach.errTooMuch": "{name} 没有附加：一条消息的附件合计最多 {max} 字。大文件请存入项目，Agent 需要时会自己读。",
+  "attach.errCount": "一条消息最多附加 {max} 个文件。",
+  "attach.drop": "松开即可附加文件",
+  "history.attachments": "附件：{names}",
 };
 
 export default zhCN;

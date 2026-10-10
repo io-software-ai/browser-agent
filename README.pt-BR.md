@@ -31,6 +31,7 @@
 **Agindo na página**
 - Ferramentas: ler a página, clicar, digitar (incluindo menus suspensos `<select>`), rolar, abrir uma URL. O modelo recebe uma lista numerada de elementos interativos e clica em `ref: 12` em vez de adivinhar seletores CSS.
 - Selecione um texto na página e pergunte só sobre ele; a seleção é anexada à sua mensagem em vez da aba inteira.
+- Anexar arquivos a uma mensagem: solte, cole ou escolha arquivos de texto, código ou PDFs, e o texto deles vai junto com o que você digita.
 - PDF: o texto é extraído com pdf.js. Um visualizador integrado permite selecionar texto em um PDF como em qualquer página. PDFs escaneados (sem camada de texto) podem ser enviados ao Claude como documento, depois que você confirmar o custo.
 - Tela inicial: sugestões com base na página em que você está.
 
@@ -45,8 +46,9 @@
 - Cartões de arquivo: resultados como arquivos `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` ou `vcf` para baixar, com cópia e pré-visualização.
 
 **Fica com você**
+- Projetos: dê a um projeto suas próprias instruções, arquivos e memória, e escolha quais skills ele usa. Toda conversa do projeto começa com as instruções dele; o agente só abre os arquivos do projeto quando precisa deles.
 - Memória: diga "lembre-se de …" e ela guarda fatos curtos sobre você entre conversas. Veja, edite ou desligue em Configurações.
-- Histórico: as últimas 30 conversas, agrupadas por data. Reabra uma e continue, ou exporte como Markdown.
+- Histórico: as últimas 30 conversas de cada projeto, agrupadas por data. Reabra uma e continue, ou exporte como Markdown.
 - 12 skills integradas e comandos `/`; escreva as suas ou instale [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, o formato que o Claude Code usa) do GitHub, skills.sh ou ClawHub.
 - Interface em 15 idiomas; os temas claro e escuro seguem o do seu sistema.
 
@@ -177,7 +179,7 @@ Só nomes e descrições entram no system prompt; o modelo chama `use_skill` par
 
 ## Segurança e privacidade
 
-**Fluxo de dados.** Uma requisição ao modelo contém suas mensagens, o conteúdo da página que o agente leu (ou só a sua seleção, ou o PDF), os resumos das páginas pesquisadas, suas memórias salvas e os nomes das suas skills.
+**Fluxo de dados.** Uma requisição ao modelo contém suas mensagens, o conteúdo da página que o agente leu (ou só a sua seleção, ou o PDF), os resumos das páginas pesquisadas, suas memórias salvas e os nomes das suas skills. Em um projeto, ela também contém as instruções e a memória do projeto; os arquivos que você anexa a uma mensagem e os arquivos do projeto que o agente abre também são enviados.
 
 - *Modo Cloud* envia essa requisição ao servidor do Browser Agent Cloud, que a encaminha ao provedor do modelo e devolve a resposta em streaming. O servidor mantém registros de uso — qual modelo, quantos tokens, páginas, buscas e créditos uma tarefa usou — para contar os créditos. Ele não armazena suas mensagens, o conteúdo das páginas nem as respostas do modelo; se o provedor do modelo devolver um erro, essa mensagem de erro pode ser guardada junto com o registro de uso para depuração.
 - *Sua própria chave* envia as requisições direto do seu navegador para o seu provedor. Nada sobre as suas tarefas vai para os servidores do Browser Agent; o único contato é o registro anônimo feito quando a extensão foi instalada.
@@ -189,9 +191,12 @@ Suas conversas, memórias, skills, configurações e qualquer chave de API ficam
 **O que precisa do seu *Permitir*.** Estas ações mostram um cartão no painel lateral e não são executadas até você clicar em *Permitir*. O cartão vive na própria página da extensão, que um site não consegue clicar por você:
 
 - cliques e envios de formulário que parecem irreversíveis: o texto visível do botão, `aria-label`, title ou value soa como pagar, comprar, pedir, excluir, enviar, publicar, autorizar, salvar, compartilhar, instalar e similares (nos 15 idiomas da interface); um formulário com vários campos ou um campo de senha; um botão só com ícone dentro de um formulário; apertar Enter em um campo que não está em um formulário (caixas de chat). Se o texto visível de um botão e seu `aria-label` não baterem, o cartão avisa;
-- ir para outro site na sua aba, navegando ou clicando em um link, a menos que seja o site onde a tarefa começou, um site que você nomeou na sua mensagem ou um que você já permitiu nesta tarefa;
+- ir para outro site na sua aba, navegando ou clicando em um link, a menos que seja o site onde a tarefa começou, um site que você nomeou na sua mensagem ou um que você já permitiu nesta tarefa. Depois que a conversa passa a ter conteúdo web ou arquivos, ele também pergunta antes de ir para qualquer endereço que ele mesmo montou, mesmo nesses sites; só passam sem perguntar endereços exatos vindos da sua mensagem, de resultados de busca ou de páginas que leu;
 - ler em segundo plano uma página cujo endereço o próprio agente montou. Sem perguntar, ele só lê endereços exatos vindos de resultados de busca, de links em páginas que já leu, de endereços na sua mensagem e de sites de pesquisa (GitHub, npm). Páginas em `localhost` ou na sua rede local não são lidas, a menos que você tenha digitado o endereço; para páginas abertas em uma aba em segundo plano, isso vale também para domínios públicos que resolvem para um endereço local (nos PDFs, só o endereço em si é verificado);
-- salvar uma memória depois que a conversa passa a ter conteúdo web (uma página lida, um PDF, uma seleção).
+- digitar em uma página um texto que não vem da sua mensagem, depois que a conversa passa a ter conteúdo web ou arquivos (uma página consegue ler o que é digitado nos seus campos mesmo sem que nada seja enviado);
+- salvar ou excluir uma memória depois que a conversa passa a ter conteúdo web ou arquivos (uma página lida, um PDF, uma seleção, um arquivo do projeto ou um anexo).
+
+**Arquivos contam como conteúdo web.** Arquivos que você envia para um projeto ou anexa a uma mensagem muitas vezes vêm da web, então os nomes e o conteúdo deles são tratados como não confiáveis: depois que o agente lê um, os cartões acima valem pelo resto da tarefa, e instruções dentro de um arquivo não são seguidas como se fossem suas. Os nomes dos arquivos não entram nas instruções do modelo.
 
 Os cartões que envolvem um endereço o mostram com a query string, porque um endereço pode levar dados para fora; endereços muito longos são encurtados, mantendo o domínio e o início da query string.
 
@@ -204,9 +209,9 @@ Clicar em uma sugestão a envia na hora. Sugestões geradas a partir da página 
 - **Prompt injection não está resolvido.** O agente lê muitas páginas não confiáveis com a sua sessão logada. Uma página maliciosa pode tentar levá-lo a enviar sua conversa, memórias ou dados de outros sites para algum lugar, ou a fazer coisas em seu nome. Os cartões cobrem as ações de alto risco acima; não são uma proteção completa. Pequenas quantidades de dados ainda podem vazar pelos links que o agente escolhe seguir ou pelo que ele pesquisa.
 - Não pesquise nem execute tarefas em páginas não confiáveis enquanto houver abas do seu banco, e-mail ou administração da empresa abertas, e acompanhe o agente enquanto uma tarefa está em execução.
 - Detectar cliques arriscados é uma heurística de palavras-chave e formato de formulário. Ela vai deixar passar alguns botões.
-- Digitar em um campo do mesmo site não pergunta. Uma página maliciosa pode ler o que o agente digita (por exemplo, com um listener de `input`) e enviar para o próprio servidor.
+- Digitar as suas próprias palavras (as da sua mensagem) em um campo não pergunta. Uma página maliciosa pode ler o que o agente digita (por exemplo, com um listener de `input`) e enviar para o próprio servidor.
 - Skills importadas e instaladas são instruções de terceiros. Enquanto uma estiver na sua lista de skills (ou você a chamar com `/name`), toda tarefa conta como não confiável: salvar uma memória, abrir um link que o agente montou ou digitar um texto que você não forneceu pergunta antes. Essas skills mostram o rótulo *De terceiros* na lista. Skills que você mesmo escreve são confiáveis. Skills adicionadas antes desta versão não têm origem registrada, então também são tratadas como de terceiros; se você mesmo escreveu uma, abra-a e escolha **Eu mesmo escrevi**. Instale apenas skills de fontes em que você confia.
-- Memórias e conversas são armazenadas sem criptografia no seu navegador e enviadas ao modelo a cada requisição (pelo Browser Agent Cloud ou para o seu próprio provedor).
+- Memórias, projetos (incluindo os arquivos deles) e conversas são armazenados sem criptografia no seu navegador. Memórias e instruções de projeto são enviadas ao modelo a cada requisição (pelo Browser Agent Cloud ou para o seu próprio provedor).
 
 ## Idiomas
 

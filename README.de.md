@@ -31,6 +31,7 @@
 **Auf der Seite handeln**
 - Werkzeuge: Seite lesen, klicken, tippen (auch `<select>`-Dropdowns), scrollen, eine URL öffnen. Das Modell bekommt eine nummerierte Liste interaktiver Elemente und klickt `ref: 12`, statt CSS-Selektoren zu erraten.
 - Markieren Sie Text auf der Seite und fragen Sie nur danach; die Markierung wird Ihrer Nachricht statt des ganzen Tabs angehängt.
+- Dateien an eine Nachricht anhängen: Textdateien, Code oder PDFs per Drag-and-drop hineinziehen, einfügen oder auswählen; ihr Text wird zusammen mit dem gesendet, was Sie tippen.
 - PDFs: Der Text wird mit pdf.js extrahiert. Ein integrierter Viewer erlaubt es, Text in einem PDF wie auf jeder Seite zu markieren. Gescannte PDFs (ohne Textebene) können als Dokument an Claude geschickt werden, nachdem Sie die Kosten bestätigt haben.
 - Startbildschirm: Vorschläge passend zur aktuellen Seite.
 
@@ -45,8 +46,9 @@
 - Dateikarten: Ergebnisse als herunterladbare `csv`-, `json`-, `md`-, `txt`-, `tsv`-, `xml`-, `yaml`-, `ics`- oder `vcf`-Dateien, mit Kopieren und Vorschau.
 
 **Bleibt bei Ihnen**
+- Projekte: Geben Sie einem Projekt eigene Anweisungen, Dateien und ein eigenes Gedächtnis und legen Sie fest, welche Skills es verwendet. Jeder Chat im Projekt beginnt mit dessen Anweisungen; der Agent öffnet Projektdateien nur, wenn er sie braucht.
 - Gedächtnis: Sagen Sie „merke dir …“, und er behält kurze Fakten über Sie über Chats hinweg. Ansehen, bearbeiten oder abschalten können Sie es in den Einstellungen.
-- Verlauf: die letzten 30 Unterhaltungen, nach Datum gruppiert. Öffnen Sie eine erneut und machen Sie weiter, oder exportieren Sie sie als Markdown.
+- Verlauf: die letzten 30 Unterhaltungen jedes Projekts, nach Datum gruppiert. Öffnen Sie eine erneut und machen Sie weiter, oder exportieren Sie sie als Markdown.
 - 12 integrierte Skills und `/`-Befehle; schreiben Sie eigene oder installieren Sie [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, das Format von Claude Code) von GitHub, skills.sh oder ClawHub.
 - Oberfläche in 15 Sprachen; helles und dunkles Design folgen Ihrem System.
 
@@ -177,7 +179,7 @@ Nur Namen und Beschreibungen gelangen in den System-Prompt; das Modell ruft `use
 
 ## Sicherheit & Datenschutz
 
-**Datenfluss.** Eine Anfrage an das Modell enthält Ihre Nachrichten, den Seiteninhalt, den der Agent gelesen hat (oder nur Ihre Markierung oder das PDF), Zusammenfassungen der recherchierten Seiten, Ihre gespeicherten Erinnerungen und Ihre Skill-Namen.
+**Datenfluss.** Eine Anfrage an das Modell enthält Ihre Nachrichten, den Seiteninhalt, den der Agent gelesen hat (oder nur Ihre Markierung oder das PDF), Zusammenfassungen der recherchierten Seiten, Ihre gespeicherten Erinnerungen und Ihre Skill-Namen. In einem Projekt enthält sie außerdem die Anweisungen und das Gedächtnis des Projekts; Dateien, die Sie an eine Nachricht anhängen, und Projektdateien, die der Agent öffnet, werden ebenfalls gesendet.
 
 - Der *Cloud-Modus* sendet diese Anfrage an den Browser-Agent-Cloud-Server, der sie an den Modellanbieter weiterleitet und die Antwort zurückstreamt. Der Server führt Nutzungsprotokolle – welches Modell, wie viele Tokens, Seiten, Suchen und Guthaben eine Aufgabe verbraucht hat –, um Guthaben zu zählen. Er speichert weder Ihre Nachrichten noch Seiteninhalte oder Antworten des Modells; gibt der Modellanbieter einen Fehler zurück, kann diese Fehlermeldung zur Fehlersuche zusammen mit dem Nutzungsprotokoll aufbewahrt werden.
 - *Ihr eigener Schlüssel* sendet Anfragen direkt von Ihrem Browser an Ihren Anbieter. Nichts über Ihre Aufgaben gelangt zu den Servern von Browser Agent; der einzige Kontakt ist die anonyme Registrierung bei der Installation der Erweiterung.
@@ -189,9 +191,12 @@ Ihre Unterhaltungen, Erinnerungen, Skills, Einstellungen und jeder API-Schlüsse
 **Was Ihr *Erlauben* braucht.** Diese Aktionen zeigen eine Karte in der Seitenleiste und laufen erst, wenn Sie *Erlauben* drücken. Die Karte befindet sich auf der eigenen Seite der Erweiterung, die eine Website nicht für Sie anklicken kann:
 
 - Klicks und Formularabsendungen, die unumkehrbar wirken: Der sichtbare Text der Schaltfläche, `aria-label`, title oder value klingt nach bezahlen, kaufen, bestellen, löschen, absenden, senden, veröffentlichen, autorisieren, speichern, teilen, installieren und Ähnlichem (in allen 15 Oberflächensprachen); ein Formular mit mehreren Feldern oder einem Passwortfeld; eine reine Symbol-Schaltfläche in einem Formular; Enter in einem Feld, das nicht in einem Formular liegt (Chat-Eingaben). Stimmen der sichtbare Text einer Schaltfläche und ihr `aria-label` nicht überein, warnt die Karte;
-- der Wechsel zu einer anderen Website in Ihrem Tab, per Navigation oder Klick auf einen Link, es sei denn, es ist die Website, auf der die Aufgabe begann, eine, die Sie in Ihrer Nachricht genannt haben, oder eine, die Sie in dieser Aufgabe bereits erlaubt haben;
+- der Wechsel zu einer anderen Website in Ihrem Tab, per Navigation oder Klick auf einen Link, es sei denn, es ist die Website, auf der die Aufgabe begann, eine, die Sie in Ihrer Nachricht genannt haben, oder eine, die Sie in dieser Aufgabe bereits erlaubt haben. Sobald die Unterhaltung Webinhalt oder Dateien enthält, wird außerdem nachgefragt, bevor der Agent zu jeder Adresse geht, die er selbst zusammengesetzt hat, auch auf diesen Websites; ohne Nachfrage gehen nur exakte Adressen aus Ihrer Nachricht, aus Suchergebnissen oder aus gelesenen Seiten durch;
 - das Lesen einer Seite im Hintergrund, deren Adresse der Agent selbst zusammengesetzt hat. Ohne Nachfrage liest er nur exakte Adressen aus Suchergebnissen, Links auf bereits gelesenen Seiten, Adressen aus Ihrer Nachricht und Recherche-Seiten (GitHub, npm). Seiten auf `localhost` oder in Ihrem lokalen Netzwerk werden nicht gelesen, außer Sie haben die Adresse getippt; bei Seiten in einem Hintergrund-Tab gilt das auch für öffentliche Domains, die auf eine lokale Adresse auflösen (bei PDFs wird nur die Adresse selbst geprüft);
-- das Speichern einer Erinnerung, sobald die Unterhaltung Webinhalt enthält (eine gelesene Seite, ein PDF, eine Markierung).
+- das Eintippen von Text, der nicht aus Ihrer Nachricht stammt, in eine Seite, sobald die Unterhaltung Webinhalt oder Dateien enthält (eine Seite kann mitlesen, was in ihre Felder getippt wird, auch ohne dass etwas abgeschickt wird);
+- das Speichern oder Löschen einer Erinnerung, sobald die Unterhaltung Webinhalt oder Dateien enthält (eine gelesene Seite, ein PDF, eine Markierung, eine Projektdatei oder ein Anhang).
+
+**Dateien zählen als Webinhalt.** Dateien, die Sie in ein Projekt hochladen oder an eine Nachricht anhängen, stammen oft aus dem Web; deshalb gelten ihre Namen und Inhalte als nicht vertrauenswürdig: Sobald der Agent eine gelesen hat, gelten die Karten oben für den Rest der Aufgabe, und Anweisungen in einer Datei werden nicht als Ihre befolgt. Dateinamen werden nicht in die Anweisungen an das Modell aufgenommen.
 
 Karten, die eine Adresse betreffen, zeigen sie mit ihrer Query-String, weil eine Adresse Daten nach außen tragen kann; sehr lange Adressen werden gekürzt, wobei die Domain und der Anfang der Query-String erhalten bleiben.
 
@@ -204,9 +209,9 @@ Ein Klick auf einen Vorschlag sendet ihn sofort. Aus der Seite erzeugte Vorschl�
 - **Prompt-Injection ist nicht gelöst.** Der Agent liest viele nicht vertrauenswürdige Seiten mit Ihrer angemeldeten Sitzung. Eine bösartige Seite kann versuchen, ihn dazu zu bringen, Ihre Unterhaltung, Ihre Erinnerungen oder Daten anderer Websites irgendwohin zu senden oder Dinge in Ihrem Namen zu tun. Die Karten decken die oben genannten Aktionen mit hohem Risiko ab; sie sind kein vollständiger Schutz. Kleine Datenmengen können weiterhin darüber abfließen, welchen Links der Agent folgt oder wonach er sucht.
 - Recherchieren Sie nicht und führen Sie keine Aufgaben auf nicht vertrauenswürdigen Seiten aus, solange Tabs mit Ihrer Bank, Ihrem E-Mail-Postfach oder der Firmenverwaltung geöffnet sind, und behalten Sie ihn im Auge, solange eine Aufgabe läuft.
 - Die Erkennung riskanter Klicks ist eine Heuristik aus Schlüsselwörtern und Formularform. Manche Schaltflächen entgehen ihr.
-- Tippen in ein Feld auf derselben Website löst keine Nachfrage aus. Eine bösartige Seite kann mitlesen, was der Agent tippt (zum Beispiel mit einem `input`-Listener), und es an ihren eigenen Server senden.
+- Das Tippen Ihrer eigenen Worte (aus Ihrer Nachricht) in ein Feld löst keine Nachfrage aus. Eine bösartige Seite kann mitlesen, was der Agent tippt (zum Beispiel mit einem `input`-Listener), und es an ihren eigenen Server senden.
 - Importierte und installierte Skills sind Anweisungen von Dritten. Solange einer in Ihrer Skill-Liste steht (oder Sie ihn mit `/name` aufrufen), gilt jede Aufgabe als nicht vertrauenswürdig: Eine Erinnerung zu speichern, einen vom Agenten zusammengebauten Link zu öffnen oder Text einzutippen, den Sie nicht vorgegeben haben, fragt zuerst nach. Diese Skills tragen in der Liste das Label *Drittanbieter*. Selbst geschriebene Skills sind vertrauenswürdig. Skills, die vor dieser Version hinzugefügt wurden, haben keine gespeicherte Quelle und gelten daher ebenfalls als Drittanbieter; wenn Sie einen selbst geschrieben haben, öffnen Sie ihn und wählen Sie **Das habe ich selbst geschrieben**. Installieren Sie nur Skills aus Quellen, denen Sie vertrauen.
-- Erinnerungen und Unterhaltungen werden unverschlüsselt in Ihrem Browser gespeichert und mit jeder Anfrage an das Modell gesendet (über Browser Agent Cloud oder an Ihren eigenen Anbieter).
+- Erinnerungen, Projekte (einschließlich ihrer Dateien) und Unterhaltungen werden unverschlüsselt in Ihrem Browser gespeichert. Erinnerungen und Projektanweisungen werden mit jeder Anfrage an das Modell gesendet (über Browser Agent Cloud oder an Ihren eigenen Anbieter).
 
 ## Sprachen
 

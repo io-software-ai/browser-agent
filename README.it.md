@@ -31,6 +31,7 @@
 **Agire sulla pagina**
 - Strumenti: leggere la pagina, cliccare, digitare (inclusi i menu a tendina `<select>`), scorrere, aprire un URL. Il modello riceve un elenco numerato di elementi interattivi e clicca su `ref: 12` invece di indovinare selettori CSS.
 - Seleziona il testo nella pagina e chiedi solo di quello; la selezione viene allegata al tuo messaggio al posto dell'intera scheda.
+- Allega file a un messaggio: trascina, incolla o scegli file di testo, codice o PDF, e il loro testo viene inviato insieme a ciò che digiti.
 - PDF: il testo viene estratto con pdf.js. Un visualizzatore integrato permette di selezionare il testo in un PDF come in qualsiasi pagina. I PDF scansionati (senza livello di testo) possono essere inviati a Claude come documento, dopo che hai confermato il costo.
 - Schermata iniziale: suggerimenti basati sulla pagina in cui ti trovi.
 
@@ -45,8 +46,9 @@
 - Schede file: risultati come file scaricabili `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` o `vcf`, con copia e anteprima.
 
 **Resta tuo**
+- Progetti: dai a un progetto le sue istruzioni, i suoi file e la sua memoria, e scegli quali skill usa. Ogni chat del progetto parte con le sue istruzioni; l'agente apre i file del progetto solo quando gli servono.
 - Memoria: di' "ricorda …" e conserva brevi fatti su di te tra una chat e l'altra. Puoi vederla, modificarla o disattivarla nelle Impostazioni.
-- Cronologia: le ultime 30 conversazioni, raggruppate per data. Riaprine una e continua, oppure esportala in Markdown.
+- Cronologia: le ultime 30 conversazioni di ogni progetto, raggruppate per data. Riaprine una e continua, oppure esportala in Markdown.
 - 12 skill integrate e comandi `/`; scrivi le tue, oppure installa [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, il formato usato da Claude Code) da GitHub, skills.sh o ClawHub.
 - Interfaccia in 15 lingue; il tema chiaro e scuro segue quello del sistema.
 
@@ -177,7 +179,7 @@ Solo nomi e descrizioni finiscono nel system prompt; il modello chiama `use_skil
 
 ## Sicurezza e privacy
 
-**Flusso dei dati.** Una richiesta al modello contiene i tuoi messaggi, il contenuto della pagina letta dall'agente (o solo la tua selezione, o il PDF), i riepiloghi delle pagine cercate, i tuoi ricordi salvati e i nomi delle tue skill.
+**Flusso dei dati.** Una richiesta al modello contiene i tuoi messaggi, il contenuto della pagina letta dall'agente (o solo la tua selezione, o il PDF), i riepiloghi delle pagine cercate, i tuoi ricordi salvati e i nomi delle tue skill. In un progetto contiene anche le istruzioni e la memoria del progetto; vengono inviati anche i file che alleghi a un messaggio e i file del progetto che l'agente apre.
 
 - La *modalità Cloud* invia quella richiesta al server Browser Agent Cloud, che la inoltra al provider del modello e restituisce la risposta in streaming. Il server conserva registri di utilizzo — quale modello, quanti token, pagine, ricerche e crediti ha usato un'attività — per contare i crediti. Non memorizza i tuoi messaggi, il contenuto delle pagine né le risposte del modello; se il provider del modello restituisce un errore, quel messaggio di errore può essere conservato insieme al registro di utilizzo per il debug.
 - *La tua chiave* invia le richieste direttamente dal tuo browser al tuo provider. Nulla sulle tue attività arriva ai server di Browser Agent; l'unico contatto è la registrazione anonima fatta quando l'estensione è stata installata.
@@ -189,9 +191,12 @@ Le tue conversazioni, i ricordi, le skill, le impostazioni e qualsiasi chiave AP
 **Cosa richiede il tuo *Consenti*.** Queste azioni mostrano una scheda nel pannello laterale e non vengono eseguite finché non premi *Consenti*. La scheda vive nella pagina dell'estensione stessa, che un sito web non può cliccare al posto tuo:
 
 - clic e invii di moduli che sembrano irreversibili: il testo visibile del pulsante, `aria-label`, title o value suona come pagare, comprare, ordinare, eliminare, inviare, pubblicare, autorizzare, salvare, condividere, installare e simili (in tutte le 15 lingue dell'interfaccia); un modulo con più campi o con un campo password; un pulsante solo icona dentro un modulo; premere Invio in un campo che non fa parte di un modulo (caselle di chat). Se il testo visibile di un pulsante e il suo `aria-label` non coincidono, la scheda ti avvisa;
-- andare su un altro sito nella tua scheda, navigando o cliccando un link, a meno che non sia il sito da cui è iniziata l'attività, uno che hai nominato nel messaggio o uno che hai già consentito in questa attività;
+- andare su un altro sito nella tua scheda, navigando o cliccando un link, a meno che non sia il sito da cui è iniziata l'attività, uno che hai nominato nel messaggio o uno che hai già consentito in questa attività. Quando la conversazione contiene contenuto web o file, chiede anche prima di andare a qualsiasi indirizzo che ha costruito lui stesso, anche su quei siti; senza chiedere passano solo gli indirizzi esatti presenti nel tuo messaggio, nei risultati di ricerca o nelle pagine che ha letto;
 - leggere in background una pagina il cui indirizzo è stato costruito dall'agente stesso. Senza chiedere, legge solo indirizzi esatti dai risultati di ricerca, link nelle pagine che ha già letto, indirizzi presenti nel tuo messaggio e siti di ricerca (GitHub, npm). Le pagine su `localhost` o sulla tua rete locale non vengono lette a meno che tu non abbia digitato l'indirizzo; per le pagine aperte in una scheda in background questo copre anche i domini pubblici che si risolvono in un indirizzo locale (per i PDF viene controllato solo l'indirizzo stesso);
-- salvare un ricordo quando la conversazione contiene contenuto web (una pagina letta, un PDF, una selezione).
+- digitare in una pagina un testo che non proviene dal tuo messaggio, quando la conversazione contiene contenuto web o file (una pagina può leggere ciò che viene digitato nei suoi campi anche senza che venga inviato nulla);
+- salvare o eliminare un ricordo quando la conversazione contiene contenuto web o file (una pagina letta, un PDF, una selezione, un file del progetto o un allegato).
+
+**I file contano come contenuto web.** I file che carichi in un progetto o alleghi a un messaggio spesso vengono dal web, quindi i loro nomi e contenuti sono trattati come non attendibili: una volta che l'agente ne legge uno, le schede qui sopra valgono per il resto dell'attività, e le istruzioni dentro un file non vengono seguite come se fossero tue. I nomi dei file non vengono inseriti nelle istruzioni del modello.
 
 Le schede che riguardano un indirizzo lo mostrano con la sua query string, perché un indirizzo può portare dati all'esterno; gli indirizzi molto lunghi vengono accorciati, mantenendo il dominio e l'inizio della query string.
 
@@ -204,9 +209,9 @@ Cliccare un suggerimento lo invia subito. I suggerimenti generati dalla pagina v
 - **La prompt injection non è risolta.** L'agente legge molte pagine non attendibili con la tua sessione con accesso effettuato. Una pagina malevola può cercare di indurlo a inviare da qualche parte la tua conversazione, i tuoi ricordi o dati di altri siti, oppure a fare cose al posto tuo. Le schede coprono le azioni ad alto rischio descritte sopra; non sono una protezione completa. Piccole quantità di dati possono comunque trapelare attraverso i link che l'agente sceglie di seguire o ciò che cerca.
 - Non fare ricerche né eseguire attività su pagine non attendibili mentre sono aperte schede della tua banca, della posta o dell'amministrazione aziendale, e tienilo d'occhio mentre un'attività è in corso.
 - Il rilevamento dei clic rischiosi è un'euristica basata su parole chiave e forma del modulo. Gli sfuggirà qualche pulsante.
-- Digitare in un campo dello stesso sito non chiede conferma. Una pagina malevola può leggere ciò che l'agente digita (per esempio con un listener `input`) e inviarlo al proprio server.
+- Digitare le tue parole (quelle del tuo messaggio) in un campo non chiede conferma. Una pagina malevola può leggere ciò che l'agente digita (per esempio con un listener `input`) e inviarlo al proprio server.
 - Le skill importate e installate sono istruzioni di terze parti. Finché una è nella tua lista di skill (o la richiami con `/name`), ogni attività è considerata non attendibile: salvare un ricordo, aprire un link costruito dall'agente o digitare un testo che non hai fornito tu chiede prima conferma. Queste skill mostrano l'etichetta *Di terze parti* nell'elenco. Le skill che scrivi tu sono attendibili. Le skill aggiunte prima di questa versione non hanno un'origine registrata, quindi sono trattate anch'esse come di terze parti; se ne hai scritta una tu, aprila e scegli **L'ho scritta io**. Installa solo skill da fonti di cui ti fidi.
-- Ricordi e conversazioni sono memorizzati non cifrati nel tuo browser e inviati al modello a ogni richiesta (tramite Browser Agent Cloud, o al tuo provider).
+- Ricordi, progetti (inclusi i loro file) e conversazioni sono memorizzati non cifrati nel tuo browser. I ricordi e le istruzioni dei progetti vengono inviati al modello a ogni richiesta (tramite Browser Agent Cloud, o al tuo provider).
 
 ## Lingue
 

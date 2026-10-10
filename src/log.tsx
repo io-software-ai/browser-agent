@@ -232,6 +232,7 @@ export function LogItem({ item }: { item: Item }) {
     case "user":
       return (
         <div className="msg user">
+          {item.files && <div className="user-files">{item.files.map((f, i) => <span className="user-file" key={i} title={f.name}><IconFile /><span>{f.name}</span></span>)}</div>}
           {item.text}
           {/* 附帶的選取內容：摺起來只露前幾個字，展開看全文 */}
           {item.selection && (

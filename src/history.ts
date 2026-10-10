@@ -92,6 +92,8 @@ export function toMarkdown(chat: Chat) {
     if (m.role === "user") {
       const text = displayText(m.content);
       if (text != null) out.push("", `## ${t("history.you")}`, "", text);
+      const files = typeof m.content === "string" ? splitAttachments(m.content).files : [];
+      if (files.length) out.push("", `> ${t("history.attachments", { names: files.map((f) => f.name).join(", ") })}`);
       const sel = selectionOf(m.content);
       if (sel != null) out.push("", `> **${t("selection.quote", { n: sel.length })}**`, ...sel.split("\n").map((l) => `> ${l}`));
       continue;

@@ -418,6 +418,15 @@ const it: Dict = {
   "confirm.forgetProject": "L’agente vuole eliminare questo ricordo dal progetto “{name}”. Questa conversazione ha letto contenuti web o file, che potrebbero averlo richiesto:",
   "project.memoryOff": "La memoria è disattivata (Impostazioni → Memoria), quindi per ora questi ricordi non vengono inviati all’agente.",
   "card.rememberedProject": "Ricordato in {name}",
+  "composer.attach": "Allega file",
+  "composer.attachDefault": "Guarda i file allegati, per favore.",
+  "attach.remove": "Rimuovi {name}",
+  "attach.save": "Salva nel progetto “{name}”",
+  "attach.saved": "Salvato nel progetto",
+  "attach.errTooMuch": "{name} non è stato allegato: i file di un messaggio possono arrivare al massimo a {max} caratteri in totale. Salva i file grandi in un progetto: l’agente li leggerà quando servono.",
+  "attach.errCount": "Puoi allegare fino a {max} file per messaggio.",
+  "attach.drop": "Rilascia per allegare i file",
+  "history.attachments": "Allegati: {names}",
 };
 
 export default it;

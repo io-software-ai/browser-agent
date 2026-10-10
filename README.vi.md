@@ -31,6 +31,7 @@
 **Làm việc trên trang**
 - Công cụ: đọc trang, bấm, nhập (kể cả danh sách thả xuống `<select>`), cuộn, mở URL. Mô hình nhận danh sách đánh số các phần tử có thể tương tác và bấm `ref: 12` thay vì đoán bộ chọn CSS.
 - Chọn văn bản trên trang để chỉ hỏi về đúng phần đó; phần được chọn được đính kèm vào tin nhắn thay vì cả tab.
+- Đính kèm tệp vào tin nhắn: thả, dán hoặc chọn tệp văn bản, mã hoặc PDF, và văn bản của chúng được gửi đi cùng với những gì bạn gõ.
 - PDF: văn bản được trích xuất bằng pdf.js. Trình xem tích hợp cho phép bạn chọn văn bản trong PDF như trên mọi trang web. PDF dạng ảnh quét (không có lớp văn bản) có thể gửi cho Claude dưới dạng tài liệu, sau khi bạn xác nhận chi phí.
 - Màn hình chính: gợi ý dựa trên trang bạn đang xem.
 
@@ -45,8 +46,9 @@
 - Thẻ tệp: kết quả dưới dạng tệp `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` hoặc `vcf` có thể tải về, kèm sao chép và xem trước.
 
 **Thuộc về bạn**
+- Dự án: cho mỗi dự án hướng dẫn, tệp và bộ nhớ riêng, rồi chọn kỹ năng nào nó dùng. Mọi cuộc trò chuyện trong dự án đều bắt đầu bằng hướng dẫn của dự án; agent chỉ mở tệp của dự án khi cần.
 - Bộ nhớ: nói "hãy nhớ …" và nó sẽ giữ những thông tin ngắn về bạn qua các cuộc trò chuyện. Xem, sửa hoặc tắt trong Cài đặt.
-- Lịch sử: 30 cuộc trò chuyện gần nhất, nhóm theo ngày. Mở lại một cuộc để tiếp tục, hoặc xuất ra Markdown.
+- Lịch sử: 30 cuộc trò chuyện gần nhất của mỗi dự án, nhóm theo ngày. Mở lại một cuộc để tiếp tục, hoặc xuất ra Markdown.
 - 12 kỹ năng tích hợp và lệnh `/`; bạn có thể tự viết, hoặc cài [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, định dạng Claude Code dùng) từ GitHub, skills.sh hoặc ClawHub.
 - Giao diện có 15 ngôn ngữ; giao diện sáng và tối theo hệ thống của bạn.
 
@@ -177,7 +179,7 @@ Chỉ tên và mô tả được đưa vào system prompt; mô hình gọi `use_
 
 ## Bảo mật & quyền riêng tư
 
-**Luồng dữ liệu.** Một yêu cầu gửi đến mô hình chứa tin nhắn của bạn, nội dung trang mà agent đã đọc (hoặc chỉ phần bạn chọn, hoặc PDF), bản tóm tắt các trang đã nghiên cứu, các bộ nhớ bạn đã lưu và tên các kỹ năng.
+**Luồng dữ liệu.** Một yêu cầu gửi đến mô hình chứa tin nhắn của bạn, nội dung trang mà agent đã đọc (hoặc chỉ phần bạn chọn, hoặc PDF), bản tóm tắt các trang đã nghiên cứu, các bộ nhớ bạn đã lưu và tên các kỹ năng. Trong một dự án, yêu cầu còn chứa hướng dẫn và bộ nhớ của dự án; tệp bạn đính kèm vào tin nhắn và tệp của dự án mà agent mở cũng được gửi đi.
 
 - *Chế độ Cloud* gửi yêu cầu đó đến máy chủ Browser Agent Cloud, máy chủ chuyển tiếp cho nhà cung cấp mô hình và truyền câu trả lời về theo luồng. Máy chủ giữ bản ghi mức sử dụng — mô hình nào, bao nhiêu token, trang, lượt tìm kiếm và tín dụng mà một tác vụ đã dùng — để tính tín dụng. Nó không lưu tin nhắn, nội dung trang hay câu trả lời của mô hình; nếu nhà cung cấp mô hình trả về lỗi, thông báo lỗi đó có thể được giữ cùng bản ghi mức sử dụng để gỡ lỗi.
 - *Khóa của riêng bạn* gửi yêu cầu thẳng từ trình duyệt đến nhà cung cấp của bạn. Không có thông tin nào về các tác vụ của bạn đến máy chủ của Browser Agent; lần liên hệ duy nhất là bước đăng ký ẩn danh khi cài tiện ích.
@@ -189,9 +191,12 @@ Cuộc trò chuyện, bộ nhớ, kỹ năng, cài đặt và khóa API của b�
 **Những gì cần bạn bấm *Cho phép*.** Các hành động sau hiện một thẻ trong bảng bên và không chạy cho đến khi bạn bấm **Cho phép**. Thẻ nằm trong trang riêng của tiện ích, nên trang web không thể bấm thay bạn:
 
 - các cú bấm và thao tác gửi biểu mẫu có vẻ không thể hoàn tác: văn bản hiển thị, `aria-label`, title hoặc value của nút đọc lên giống thanh toán, mua, đặt hàng, xóa, gửi, phát hành, ủy quyền, lưu, chia sẻ, cài đặt và tương tự (trong cả 15 ngôn ngữ giao diện); biểu mẫu có nhiều ô nhập hoặc có ô mật khẩu; nút chỉ có biểu tượng bên trong biểu mẫu; nhấn Enter trong một ô nhập không thuộc biểu mẫu (khung chat). Nếu văn bản hiển thị của nút và `aria-label` của nó không khớp nhau, thẻ sẽ cảnh báo bạn;
-- chuyển sang một trang web khác trong tab của bạn, dù bằng điều hướng hay bấm liên kết, trừ khi đó là trang mà tác vụ bắt đầu, trang bạn đã nêu trong tin nhắn, hoặc trang bạn đã cho phép trong tác vụ này;
+- chuyển sang một trang web khác trong tab của bạn, dù bằng điều hướng hay bấm liên kết, trừ khi đó là trang mà tác vụ bắt đầu, trang bạn đã nêu trong tin nhắn, hoặc trang bạn đã cho phép trong tác vụ này. Khi cuộc trò chuyện đã chứa nội dung web hoặc tệp, agent còn hỏi trước khi đến bất kỳ địa chỉ nào do chính nó ghép ra, kể cả trên những trang đó; chỉ các địa chỉ đúng y hệt trong tin nhắn của bạn, kết quả tìm kiếm hoặc những trang nó đã đọc mới đi qua mà không hỏi;
 - đọc ở nền một trang mà địa chỉ do chính agent ghép ra. Khi chưa hỏi, nó chỉ đọc đúng các địa chỉ có trong kết quả tìm kiếm, liên kết trong những trang nó đã đọc, địa chỉ trong tin nhắn của bạn, và các trang nghiên cứu (GitHub, npm). Các trang trên `localhost` hoặc mạng nội bộ của bạn sẽ không được đọc trừ khi bạn tự gõ địa chỉ; với trang mở trong tab nền, điều này cũng bao gồm các tên miền công khai phân giải về địa chỉ nội bộ (với PDF chỉ kiểm tra chính địa chỉ);
-- lưu một bộ nhớ khi cuộc trò chuyện đã chứa nội dung web (trang đã đọc, PDF, phần văn bản được chọn).
+- gõ vào trang một văn bản không phải từ tin nhắn của bạn, khi cuộc trò chuyện đã chứa nội dung web hoặc tệp (trang có thể đọc những gì được gõ vào ô của nó mà không cần gửi gì cả);
+- lưu hoặc xóa một bộ nhớ khi cuộc trò chuyện đã chứa nội dung web hoặc tệp (trang đã đọc, PDF, phần văn bản được chọn, tệp dự án hoặc tệp đính kèm).
+
+**Tệp được coi như nội dung web.** Tệp bạn tải lên dự án hoặc đính kèm vào tin nhắn thường đến từ web, nên tên và nội dung của chúng được coi là không đáng tin: sau khi agent đọc một tệp, các thẻ ở trên áp dụng cho phần còn lại của tác vụ, và chỉ dẫn nằm trong tệp không được làm theo như thể là của bạn. Tên tệp không được đưa vào chỉ dẫn gửi cho mô hình.
 
 Các thẻ liên quan đến địa chỉ hiển thị địa chỉ kèm chuỗi truy vấn, vì một địa chỉ có thể mang dữ liệu ra ngoài; địa chỉ quá dài sẽ được rút ngắn, nhưng vẫn giữ tên miền và phần đầu của chuỗi truy vấn.
 
@@ -204,9 +209,9 @@ Bấm vào một gợi ý sẽ gửi ngay. Các gợi ý được tạo từ tra
 - **Prompt injection chưa được giải quyết.** Agent đọc rất nhiều trang không đáng tin bằng phiên đăng nhập của bạn. Một trang độc hại có thể cố điều khiển nó gửi cuộc trò chuyện, bộ nhớ hoặc dữ liệu từ các trang khác đi nơi nào đó, hoặc làm những việc nhân danh bạn. Các thẻ xác nhận bao phủ những hành động rủi ro cao ở trên; chúng không phải là sự bảo vệ trọn vẹn. Một lượng nhỏ dữ liệu vẫn có thể rò rỉ qua việc agent chọn theo liên kết nào hoặc tìm kiếm điều gì.
 - Đừng nghiên cứu hay chạy tác vụ trên các trang không đáng tin khi các tab ngân hàng, email hoặc trang quản trị công ty của bạn đang mở, và hãy theo dõi nó khi một tác vụ đang chạy.
 - Việc phát hiện cú bấm rủi ro là một phương pháp heuristic dựa trên từ khóa và hình dạng biểu mẫu. Nó sẽ bỏ sót một số nút.
-- Nhập văn bản vào một ô trên cùng trang web sẽ không hỏi. Một trang độc hại có thể đọc những gì agent nhập (ví dụ bằng trình lắng nghe `input`) và gửi về máy chủ của nó.
+- Nhập chính những lời của bạn (lấy từ tin nhắn của bạn) vào một ô sẽ không hỏi. Một trang độc hại có thể đọc những gì agent nhập (ví dụ bằng trình lắng nghe `input`) và gửi về máy chủ của nó.
 - Kỹ năng đã nhập và đã cài là chỉ dẫn của bên thứ ba. Khi một kỹ năng nằm trong danh sách kỹ năng của bạn (hoặc bạn gọi nó bằng `/name`), mọi tác vụ đều được coi là không đáng tin: lưu một ký ức, mở liên kết do agent tự dựng, hoặc gõ văn bản không phải do bạn đưa ra sẽ hỏi bạn trước. Những kỹ năng này hiện nhãn *Bên thứ ba* trong danh sách. Kỹ năng do chính bạn viết được coi là đáng tin. Kỹ năng được thêm trước phiên bản này không có nguồn được ghi lại, nên cũng được coi là của bên thứ ba; nếu bạn tự viết, hãy mở nó và chọn **Tôi tự viết**. Chỉ cài kỹ năng từ nguồn bạn tin cậy.
-- Bộ nhớ và cuộc trò chuyện được lưu không mã hóa trong trình duyệt của bạn và được gửi kèm mỗi yêu cầu đến mô hình (qua Browser Agent Cloud, hoặc đến nhà cung cấp của riêng bạn).
+- Bộ nhớ, dự án (kể cả tệp của chúng) và cuộc trò chuyện được lưu không mã hóa trong trình duyệt của bạn. Bộ nhớ và hướng dẫn của dự án được gửi kèm mỗi yêu cầu đến mô hình (qua Browser Agent Cloud, hoặc đến nhà cung cấp của riêng bạn).
 
 ## Ngôn ngữ
 

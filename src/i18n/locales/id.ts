@@ -405,6 +405,15 @@ const id: Dict = {
   "confirm.forgetProject": "Agen ingin menghapus memori ini dari proyek “{name}”. Obrolan ini sudah membaca konten web atau file, yang mungkin memintanya:",
   "project.memoryOff": "Memori sedang dinonaktifkan (Pengaturan → Memori), jadi memori ini belum dikirim ke agen.",
   "card.rememberedProject": "Diingat di {name}",
+  "composer.attach": "Lampirkan file",
+  "composer.attachDefault": "Tolong lihat file terlampir.",
+  "attach.remove": "Hapus {name}",
+  "attach.save": "Simpan ke proyek “{name}”",
+  "attach.saved": "Tersimpan di proyek",
+  "attach.errTooMuch": "{name} tidak dilampirkan: total file dalam satu pesan maksimal {max} karakter. Simpan file besar ke proyek, nanti agen membacanya saat diperlukan.",
+  "attach.errCount": "Maksimal {max} file per pesan.",
+  "attach.drop": "Lepaskan untuk melampirkan file",
+  "history.attachments": "Lampiran: {names}",
 };
 
 export default id;

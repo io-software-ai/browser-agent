@@ -418,6 +418,15 @@ const de: Dict = {
   "confirm.forgetProject": "Der Agent möchte diesen Eintrag aus dem Projekt „{name}“ löschen. Dieser Chat hat Webinhalte oder Dateien gelesen, die das verlangt haben könnten:",
   "project.memoryOff": "Das Gedächtnis ist ausgeschaltet (Einstellungen → Gedächtnis), daher werden diese Einträge gerade nicht an den Agenten gesendet.",
   "card.rememberedProject": "Gemerkt in {name}",
+  "composer.attach": "Dateien anhängen",
+  "composer.attachDefault": "Bitte sieh dir die angehängten Dateien an.",
+  "attach.remove": "{name} entfernen",
+  "attach.save": "Im Projekt „{name}“ speichern",
+  "attach.saved": "Im Projekt gespeichert",
+  "attach.errTooMuch": "{name} wurde nicht angehängt: Die Dateien einer Nachricht dürfen zusammen höchstens {max} Zeichen haben. Speichere große Dateien lieber in einem Projekt – der Agent liest sie dann bei Bedarf.",
+  "attach.errCount": "Pro Nachricht kannst du bis zu {max} Dateien anhängen.",
+  "attach.drop": "Loslassen, um Dateien anzuhängen",
+  "history.attachments": "Angehängt: {names}",
 };
 
 export default de;

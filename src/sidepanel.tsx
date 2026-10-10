@@ -1,5 +1,5 @@
 // 側邊欄進入點：讀設定後掛上 React。狀態在 store.ts，agent 迴圈在 agent.ts，工具實作在 tools.ts。
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { S, emit, useStore, type Suggestion } from "./store";
 import { init, send, resetChat, showView, persist, refreshMe, setMode, COMMANDS } from "./agent";
@@ -12,9 +12,11 @@ import { cloudModels, estimateCredits } from "./cloud-models";
 import { t, currentLang, type Key } from "./i18n";
 import { LogList } from "./log";
 import { HistoryPage, SettingsPage, MemoryPage, SkillsPage, SkillEditorPage, SkillItem, Toast, ModelSelect, CloudModelSelect, type Route, type Nav } from "./pages";
-import { ProjectSwitch, ProjectsPage, ProjectPage, ProjectBanner } from "./project-pages";
+import { ProjectSwitch, ProjectsPage, ProjectPage, ProjectBanner, fileToText, FILE_ACCEPT } from "./project-pages";
+import { attachedChars, MAX_ATTACH_CHARS } from "./attachments";
+import { addProjectFiles, cleanFileName, currentProject, MAX_FILES } from "./projects";
 import {
-  IconGear, IconHistory, IconLines, IconPlus, IconSend, IconSpark, IconStop, IconTable, IconTranslate,
+  IconClip, IconFile, IconFolder, IconGear, IconHistory, IconLines, IconOk, IconPlus, IconSend, IconSpark, IconStop, IconTable, IconTranslate,
 } from "./icons";
 
 const lines = (s: string) => s.split("\n").flatMap((line, i) => (i ? [<br key={i} />, line] : [line]));
@@ -143,11 +145,71 @@ function Empty({ nav }: { nav: Nav }) {
 type SlashItem = { name: string; description: string; run?: () => void };
 
 // 輸入框開頭打 / 跳出選單（內建指令＋技能）：↑↓ 選、Enter／Tab 帶入、Esc 關閉
+// 聊天框附檔：轉成文字放在輸入框裡，送出時才進訊息（attachments.ts）。上限：一則 MAX_ATTACH_FILES 個、合計 MAX_ATTACH_CHARS 字，
+// 再大的請使用者存進專案（agent 需要時才讀）。回傳要顯示的錯誤（空字串＝都附上了）
+const MAX_ATTACH_FILES = 10;
+let attachSeq = 0;
+async function attachFiles(files: File[]): Promise<string> {
+  const errs: string[] = [];
+  for (const f of files) {
+    if (S.attachments.length >= MAX_ATTACH_FILES) { errs.push(t("attach.errCount", { max: MAX_ATTACH_FILES })); break; }
+    const r = await fileToText(f);
+    if ("err" in r) { errs.push(r.err); continue; }
+    if (attachedChars(S.attachments) + r.text.length > MAX_ATTACH_CHARS) { errs.push(t("attach.errTooMuch", { name: r.name, max: MAX_ATTACH_CHARS.toLocaleString(currentLang()) })); continue; }
+    S.attachments = [...S.attachments, { id: ++attachSeq, name: cleanFileName(r.name, S.attachments.map((a) => a.name)), text: r.text }];
+    emit();
+  }
+  return errs.join(" ");
+}
+
+// 拖放、貼上、按迴紋針都走這裡：附完就把錯誤顯示在輸入框下面
+export const attach = async (files: File[]) => {
+  if (!files.length) return;
+  S.attachError = "";
+  emit();
+  S.attachError = await attachFiles(files);
+  emit();
+};
+const setAttachError = (e: string) => { S.attachError = e; emit(); };
+
+function AttachList({ onErr }: { onErr: (e: string) => void }) {
+  const project = currentProject();
+  const save = async (id: number) => {
+    const a = S.attachments.find((x) => x.id === id);
+    if (!a || !project) return;
+    try {
+      const { over } = await addProjectFiles(project.id, [{ name: a.name, text: a.text }]);
+      if (over.length) return onErr(t("project.errFull", { max: MAX_FILES, names: a.name }));
+    } catch {
+      return onErr(t("project.errStorage"));
+    }
+    S.attachments = S.attachments.map((x) => (x.id === id ? { ...x, saved: true } : x));
+    emit();
+  };
+  return (
+    <ul className="attach-list" id="attachments" role="list">
+      {S.attachments.map((a) => (
+        <li className="attach-chip" key={a.id}>
+          <IconFile />
+          <span className="attach-name" title={a.name}>{a.name}</span>
+          <small>{t("project.fileChars", { n: a.text.length.toLocaleString(currentLang()) })}</small>
+          {project && (a.saved
+            ? <span className="attach-saved" title={t("attach.saved")} aria-label={t("attach.saved")}><IconOk /></span>
+            : <button type="button" className="attach-btn attach-save" title={t("attach.save", { name: project.name })} aria-label={t("attach.save", { name: project.name })} onClick={() => save(a.id)}><IconFolder /></button>)}
+          <button type="button" className="attach-btn attach-remove" title={t("attach.remove", { name: a.name })} aria-label={t("attach.remove", { name: a.name })}
+            onClick={() => { S.attachments = S.attachments.filter((x) => x.id !== a.id); emit(); }}>×</button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Composer() {
   const [text, setText] = useState("");
   const [slash, setSlash] = useState<{ items: SlashItem[]; index: number } | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (slash) menu.current?.children[slash.index]?.scrollIntoView({ block: "nearest" }); }, [slash]);
 
   // ask_user 等待回答時，輸入框送出的文字就是答案；沒打字時按鈕仍是「停止」
@@ -197,9 +259,11 @@ function Composer() {
         </button>
       )}
       <div className="composer">
+        {!!S.attachments.length && <AttachList onErr={setAttachError} />}
         <textarea
           id="input" ref={input} rows={1} onFocus={refreshSelection} placeholder={S.asking ? t("composer.answerPlaceholder") : t("composer.placeholder")} value={text}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={(e) => { const files = [...e.clipboardData.files]; if (files.length) { e.preventDefault(); attach(files); } }}
           onBlur={() => setSlash(null)}
           onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) return;
@@ -217,6 +281,8 @@ function Composer() {
           }}
         />
         <div className="composer-bar">
+          <button type="button" className="icon-btn attach-open" id="attach" title={t("composer.attach")} aria-label={t("composer.attach")} onClick={() => fileInput.current?.click()}><IconClip /></button>
+          <input type="file" ref={fileInput} id="attach-input" multiple accept={FILE_ACCEPT} hidden onChange={(e) => { attach([...(e.target.files ?? [])]); e.target.value = ""; }} />
           {S.mode === "cloud" ? <CloudModelSelect id="model" variant="bar" /> : <ModelSelect id="model" variant="bar" p={activeProvider()} />}
           {/* effort 是 Anthropic 的參數（cloud 固定是 Anthropic）；Haiku 不開 effort 與自適應思考 */}
           <Select id="effort" label={t("composer.effort")} title={t("composer.effortHint")} hidden={activeProvider() !== "anthropic" || isHaiku(model)} value={S.effort}
@@ -238,6 +304,7 @@ function Composer() {
           </button>
         </div>
       </div>
+      {S.attachError && <div className="form-error attach-error" id="attach-error" role="alert">{S.attachError}</div>}
     </form>
   );
 }
@@ -250,8 +317,14 @@ function ChatView({ inert, nav }: { inert: boolean; nav: Nav }) {
     if (S.stickForce || near.current) b.scrollTop = b.scrollHeight;
     S.stickForce = false;
   });
+  // 檔案拖到對話區任何地方都附加到輸入框（只看檔案；拖文字進輸入框照舊）
+  const [drag, setDrag] = useState(false);
+  const files = (e: ReactDragEvent) => e.dataTransfer.types.includes("Files");
   return (
-    <main id="chat" inert={inert}>
+    <main id="chat" inert={inert} data-drag={drag ? "" : undefined} data-drop={t("attach.drop")}
+      onDragOver={(e) => { if (!files(e)) return; e.preventDefault(); setDrag(true); }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDrag(false); }}
+      onDrop={(e) => { if (!files(e)) return; e.preventDefault(); setDrag(false); attach([...e.dataTransfer.files]); }}>
       <div id="scroll" ref={box} onScroll={() => {
         const b = box.current!;
         near.current = b.scrollHeight - b.scrollTop - b.clientHeight < 80;

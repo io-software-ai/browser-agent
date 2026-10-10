@@ -31,6 +31,7 @@
 **Actuar sobre la página**
 - Herramientas: leer la página, hacer clic, escribir (incluidos los desplegables `<select>`), desplazarse, abrir una URL. El modelo recibe una lista numerada de elementos interactivos y hace clic en `ref: 12` en lugar de adivinar selectores CSS.
 - Selecciona texto en la página y pregunta solo por eso; la selección se adjunta a tu mensaje en lugar de toda la pestaña.
+- Adjuntar archivos a un mensaje: suelta, pega o elige archivos de texto, código o PDF, y su texto se envía junto con lo que escribes.
 - PDF: el texto se extrae con pdf.js. Un visor integrado te permite seleccionar texto en un PDF como en cualquier página. Los PDF escaneados (sin capa de texto) se pueden enviar a Claude como documento, después de que confirmes el coste.
 - Pantalla de inicio: sugerencias basadas en la página en la que estás.
 
@@ -45,8 +46,9 @@
 - Tarjetas de archivo: resultados como archivos descargables `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` o `vcf`, con copiar y vista previa.
 
 **Tuyo para conservar**
+- Proyectos: dale a un proyecto sus propias instrucciones, archivos y memoria, y elige qué habilidades usa. Cada chat del proyecto empieza con sus instrucciones; el agente abre los archivos del proyecto solo cuando los necesita.
 - Memoria: di "recuerda …" y guarda datos breves sobre ti entre chats. Consúltala, edítala o desactívala en Ajustes.
-- Historial: las últimas 30 conversaciones, agrupadas por fecha. Reabre una y sigue, o expórtala como Markdown.
+- Historial: las últimas 30 conversaciones de cada proyecto, agrupadas por fecha. Reabre una y sigue, o expórtala como Markdown.
 - 12 habilidades integradas y comandos `/`; escribe las tuyas o instala [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, el formato que usa Claude Code) desde GitHub, skills.sh o ClawHub.
 - Interfaz en 15 idiomas; el tema claro u oscuro sigue el de tu sistema.
 
@@ -177,7 +179,7 @@ Solo los nombres y descripciones entran en el system prompt; el modelo llama a `
 
 ## Seguridad y privacidad
 
-**Flujo de datos.** Una petición al modelo contiene tus mensajes, el contenido de la página que leyó el agente (o solo tu selección, o el PDF), los resúmenes de las páginas que investigó, tus recuerdos guardados y los nombres de tus habilidades.
+**Flujo de datos.** Una petición al modelo contiene tus mensajes, el contenido de la página que leyó el agente (o solo tu selección, o el PDF), los resúmenes de las páginas que investigó, tus recuerdos guardados y los nombres de tus habilidades. En un proyecto contiene además las instrucciones y la memoria del proyecto; los archivos que adjuntas a un mensaje y los archivos del proyecto que abre el agente también se envían.
 
 - *Modo Cloud* envía esa petición al servidor de Browser Agent Cloud, que la reenvía al proveedor del modelo y devuelve la respuesta en streaming. El servidor conserva registros de uso (qué modelo, cuántos tokens, páginas, búsquedas y créditos usó una tarea) para contar los créditos. No guarda tus mensajes, el contenido de las páginas ni las respuestas del modelo; si el proveedor del modelo devuelve un error, ese mensaje de error puede conservarse junto al registro de uso para depuración.
 - *Tu propia clave* envía las peticiones directamente de tu navegador a tu proveedor. Nada sobre tus tareas llega a los servidores de Browser Agent; el único contacto es el registro anónimo que se hizo al instalar la extensión.
@@ -189,9 +191,12 @@ Tus conversaciones, recuerdos, habilidades, ajustes y cualquier clave de API se 
 **Qué necesita tu *Permitir*.** Estas acciones muestran una tarjeta en el panel lateral y no se ejecutan hasta que pulsas *Permitir*. La tarjeta vive en la propia página de la extensión, que un sitio web no puede pulsar por ti:
 
 - clics y envíos de formulario que parecen irreversibles: el texto visible del botón, `aria-label`, title o value suena a pagar, comprar, pedir, eliminar, enviar, publicar, autorizar, guardar, compartir, instalar y similares (en los 15 idiomas de la interfaz); un formulario con varios campos o un campo de contraseña; un botón solo con icono dentro de un formulario; pulsar Intro en un campo que no está dentro de un formulario (cuadros de chat). Si el texto visible de un botón y su `aria-label` no coinciden, la tarjeta te avisa;
-- ir a otro sitio en tu pestaña, ya sea navegando o haciendo clic en un enlace, salvo que sea el sitio donde empezó la tarea, uno que hayas nombrado en tu mensaje, o uno que ya hayas permitido en esta tarea;
+- ir a otro sitio en tu pestaña, ya sea navegando o haciendo clic en un enlace, salvo que sea el sitio donde empezó la tarea, uno que hayas nombrado en tu mensaje, o uno que ya hayas permitido en esta tarea. Una vez que la conversación contiene contenido web o archivos, también pregunta antes de ir a cualquier dirección que haya construido él mismo, incluso en esos sitios; solo las direcciones exactas de tu mensaje, de resultados de búsqueda o de páginas que leyó pasan sin preguntar;
 - leer en segundo plano una página cuya dirección ha construido el propio agente. Sin preguntar, solo lee direcciones exactas de resultados de búsqueda, enlaces de páginas que ya leyó, direcciones de tu mensaje y sitios de investigación (GitHub, npm). Las páginas en `localhost` o en tu red local no se leen salvo que hayas escrito tú la dirección; en las páginas abiertas en una pestaña en segundo plano esto cubre también los dominios públicos que resuelven a una dirección local (en los PDF solo se comprueba la dirección en sí);
-- guardar un recuerdo una vez que la conversación contiene contenido web (una página leída, un PDF, una selección).
+- escribir en una página texto que no sea de tu mensaje, una vez que la conversación contiene contenido web o archivos (una página puede leer lo que se escribe en sus campos aunque no se envíe nada);
+- guardar o borrar un recuerdo una vez que la conversación contiene contenido web o archivos (una página leída, un PDF, una selección, un archivo del proyecto o un adjunto).
+
+**Los archivos cuentan como contenido web.** Los archivos que subes a un proyecto o adjuntas a un mensaje suelen venir de la web, así que sus nombres y contenidos se tratan como no fiables: cuando el agente lee uno, las tarjetas de arriba se aplican durante el resto de la tarea, y las instrucciones dentro de un archivo no se siguen como si fueran tuyas. Los nombres de archivo no se incluyen en las instrucciones del modelo.
 
 Las tarjetas que implican una dirección la muestran con su cadena de consulta, porque una dirección puede sacar datos; las direcciones muy largas se acortan, conservando el dominio y el comienzo de la cadena de consulta.
 
@@ -204,9 +209,9 @@ Hacer clic en una sugerencia la envía al instante. Las sugerencias generadas a 
 - **La inyección de prompts no está resuelta.** El agente lee muchas páginas no confiables con tu sesión iniciada. Una página maliciosa puede intentar llevarlo a enviar tu conversación, tus recuerdos o datos de otros sitios a algún lugar, o a hacer cosas en tu nombre. Las tarjetas cubren las acciones de alto riesgo descritas arriba; no son una protección completa. Pequeñas cantidades de datos aún pueden filtrarse por los enlaces que el agente decida seguir o por lo que busque.
 - No investigues ni ejecutes tareas en páginas no confiables mientras tengas abiertas pestañas de tu banco, correo o administración de empresa, y vigílalo mientras una tarea está en marcha.
 - Detectar clics arriesgados es una heurística de palabras clave y forma del formulario. Se le escaparán algunos botones.
-- Escribir en un campo del mismo sitio no pregunta. Una página maliciosa puede leer lo que escribe el agente (por ejemplo con un listener de `input`) y enviarlo a su propio servidor.
+- Escribir tus propias palabras (las de tu mensaje) en un campo no pregunta. Una página maliciosa puede leer lo que escribe el agente (por ejemplo con un listener de `input`) y enviarlo a su propio servidor.
 - Las habilidades importadas e instaladas son instrucciones de terceros. Mientras una esté en tu lista de habilidades (o la llames con `/name`), toda tarea se considera no fiable: guardar un recuerdo, abrir un enlace que construyó el agente o escribir texto que no diste tú pregunta antes. Estas habilidades muestran una etiqueta *De terceros* en la lista. Las habilidades que escribes tú son de confianza. Las habilidades añadidas antes de esta versión no tienen un origen registrado, así que también se tratan como de terceros; si escribiste una tú mismo, ábrela y elige **Lo escribí yo**. Instala solo habilidades de fuentes en las que confíes.
-- Los recuerdos y conversaciones se guardan sin cifrar en tu navegador y se envían con cada petición al modelo (a través de Browser Agent Cloud, o a tu propio proveedor).
+- Los recuerdos, los proyectos (con sus archivos) y las conversaciones se guardan sin cifrar en tu navegador. Los recuerdos y las instrucciones de los proyectos se envían con cada petición al modelo (a través de Browser Agent Cloud, o a tu propio proveedor).
 
 ## Idiomas
 

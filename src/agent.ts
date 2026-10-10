@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { systemPrompt, tools, MEMORY_TOOLS, CARD_TOOLS, newTask, type Summarizer } from "./shared";
 import { memoryPrompt } from "./memory";
 import { currentProject, projectPrompt, projectSkills, type Project } from "./projects";
+import { withAttachments, hasAttachment, splitAttachments } from "./attachments";
 import { skillsPrompt, expandSlash, slashSkill, skillModel, untrustedSkill, thirdPartyListed, LEGACY_SOURCE, type Skill } from "./skills";
 import { HAIKU, migrateModel } from "./models";
 import { cloudModels } from "./cloud-models";
@@ -227,7 +228,7 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
   const tabId = startTab.id!;
   // 這則對話裡已經有網頁來的內容（之前讀過頁面、這則或之前附了選取文字）或第三方技能的指示（系統提示詞裡的說明、/名稱 展開、use_skill 的結果）＝一開始就算不可信
   // 專案檔案（read_project_file）也是不可信的內容
-  const tainted = typed === null || thirdPartyListed(skills) || msgs.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot", "read_project_file"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
+  const tainted = typed === null || thirdPartyListed(skills) || msgs.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || hasAttachment(m.content) || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot", "read_project_file"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
   const task = newTask(startTab.url, typed ?? "", tainted, cloud ? readLimit : undefined); // cloud：任務開始時釘住；byok 照舊即時讀 S.pageChars
   if (project) task.projectId = project.id;
   if (!task.question) task.question = userText.slice(0, 500); // 首頁建議：沒有使用者打的字，用建議的提示詞
@@ -334,7 +335,8 @@ export const COMMANDS = [{ name: "clear", descKey: "command.clear" as Key, run: 
 // fromPage：依頁面產生的建議（網頁能影響它的文字），裡面的網址不算使用者指定的
 export async function send(raw: string, { fromPage = false } = {}) {
   if (controller) { controller.abort(); return; }
-  const text = raw.trim();
+  const files = fromPage ? [] : S.attachments; // 首頁建議不帶輸入框裡的附件
+  const text = raw.trim() || (files.length ? t("composer.attachDefault") : ""); // 只附了檔案、沒打字：用一句預設的話
   if (!text) return;
   const command = COMMANDS.find((c) => text === `/${c.name}`);
   if (command) return command.run();
@@ -342,7 +344,9 @@ export async function send(raw: string, { fromPage = false } = {}) {
   controller = new AbortController();
   const signal = controller.signal;
   const selection = await takeSelection();
-  addItem({ kind: "user", text, ...(selection ? { selection } : {}) });
+  if (files.length) S.attachments = [];
+  S.attachError = "";
+  addItem({ kind: "user", text, ...(selection ? { selection } : {}), ...(files.length ? { files: files.map((f) => ({ name: f.name, chars: f.text.length })) } : {}) });
   const msgs = S.messages; // 任務中打開別段對話會換掉 S.messages：下面的復原與存檔只對這一份做
   const start = msgs.length;
   const cloud = S.mode === "cloud";
@@ -351,7 +355,9 @@ export async function send(raw: string, { fromPage = false } = {}) {
     // /技能 的 model 只在 Anthropic 生效（例如 model: haiku 讓摘要類技能改用便宜的模型）
     const override = activeProvider() === "anthropic" ? skillModel(slashSkill(text, S.skills)?.model) : null;
     const expanded = expandSlash(text, S.skills);
-    await runApi(selection ? withSelection(expanded, selection, readChars()) : expanded, fromPage ? null : text, stats, signal, override);
+    // 附件放在訊息最前面（不可信、跳脫過）；typed 只有使用者打的那行：附件裡的字不算「使用者給的」（type／navigate 的閘門照舊）
+    const body = selection ? withSelection(expanded, selection, readChars()) : expanded;
+    await runApi(withAttachments(body, files), fromPage ? null : text, stats, signal, override);
   } catch (err: any) {
     if (msgs.length > start) msgs.length = start; // 丟掉這一輪，避免留下沒配對 tool_result 的 tool_use
     if (S.messages === msgs) { // 換成別段對話了（任務中打開歷史、開新對話）：畫面上的不是這個任務，不要把「已停止」加進去
@@ -405,7 +411,8 @@ export async function openChat(meta: ChatMeta) {
     if (m.role === "user") {
       const text = displayText(m.content);
       const selection = selectionOf(m.content);
-      if (text != null) { addItem({ kind: "user", text, ...(selection != null ? { selection } : {}) }); continue; }
+      const files = typeof m.content === "string" ? splitAttachments(m.content).files : [];
+      if (text != null) { addItem({ kind: "user", text, ...(selection != null ? { selection } : {}), ...(files.length ? { files } : {}) }); continue; }
       for (const r of m.content as Block[]) {
         if (r.type !== "tool_result") continue;
         const use = uses.get(r.tool_use_id!);

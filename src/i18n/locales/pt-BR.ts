@@ -418,6 +418,15 @@ const ptBR: Dict = {
   "confirm.forgetProject": "O agente quer excluir esta memória do projeto “{name}”. Esta conversa leu conteúdo da web ou arquivos, que podem ter pedido isso:",
   "project.memoryOff": "A memória está desativada (Configurações → Memória), então estas memórias não estão sendo enviadas ao agente.",
   "card.rememberedProject": "Lembrado em {name}",
+  "composer.attach": "Anexar arquivos",
+  "composer.attachDefault": "Veja os arquivos anexados, por favor.",
+  "attach.remove": "Remover {name}",
+  "attach.save": "Salvar no projeto “{name}”",
+  "attach.saved": "Salvo no projeto",
+  "attach.errTooMuch": "{name} não foi anexado: os arquivos de uma mensagem podem somar no máximo {max} caracteres. Salve arquivos grandes em um projeto, e o agente vai lê-los quando precisar.",
+  "attach.errCount": "Você pode anexar até {max} arquivos por mensagem.",
+  "attach.drop": "Solte para anexar os arquivos",
+  "history.attachments": "Anexos: {names}",
 };
 
 export default ptBR;

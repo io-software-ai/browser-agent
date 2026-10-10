@@ -31,6 +31,7 @@ English · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) ·
 **Acting on the page**
 - Tools: read the page, click, type (including `<select>` dropdowns), scroll, open a URL. The model gets a numbered list of interactive elements and clicks `ref: 12` instead of guessing CSS selectors.
 - Select text on the page and ask about just that; the selection is attached to your message instead of the whole tab.
+- Attach files to a message: drop, paste or pick text files, code or PDFs, and their text goes along with what you type.
 - PDFs: text is extracted with pdf.js. A built-in viewer lets you select text in a PDF like on any page. Scanned PDFs (no text layer) can be sent to Claude as a document, after you confirm the cost.
 - Home screen: suggestions based on the page you're on.
 
@@ -45,8 +46,9 @@ English · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) ·
 - File cards: results as downloadable `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics` or `vcf` files, with copy and preview.
 
 **Yours to keep**
+- Projects: give a project its own instructions, files and memory, and choose which skills it uses. Every chat in the project starts with its instructions; the agent opens project files only when it needs them.
 - Memory: say "remember …" and it keeps short facts about you across chats. View, edit or turn it off in Settings.
-- History: the last 30 conversations, grouped by date. Reopen one and keep going, or export it as Markdown.
+- History: the last 30 conversations of each project, grouped by date. Reopen one and keep going, or export it as Markdown.
 - 12 built-in skills and `/` commands; write your own, or install [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, the format Claude Code uses) from GitHub, skills.sh or ClawHub.
 - Interface in 15 languages; light and dark theme follow your system.
 
@@ -177,7 +179,7 @@ Only names and descriptions go into the system prompt; the model calls `use_skil
 
 ## Security & privacy
 
-**Data flow.** A request to the model contains your messages, the page content the agent read (or just your selection, or the PDF), summaries of pages it researched, your saved memories and your skill names.
+**Data flow.** A request to the model contains your messages, the page content the agent read (or just your selection, or the PDF), summaries of pages it researched, your saved memories and your skill names. In a project it also contains the project's instructions and memory; files you attach to a message, and project files the agent opens, are sent too.
 
 - *Cloud mode* sends that request to the Browser Agent Cloud server, which forwards it to the model provider and streams the reply back. The server keeps usage records — which model, how many tokens, pages, searches and credits a task used — to count credits. It does not store your messages, page content or the model's replies; if the model provider returns an error, that error message may be kept with the usage record for debugging.
 - *Your own key* sends requests straight from your browser to your provider. Nothing about your tasks goes to Browser Agent's servers; the only contact is the anonymous registration made when the extension was installed.
@@ -189,9 +191,12 @@ Your conversations, memories, skills, settings and any API key are stored only i
 **What needs your *Allow*.** These actions show a card in the side panel and don't run until you press *Allow*. The card lives in the extension's own page, which a website can't click for you:
 
 - clicks and form submissions that look irreversible: the button's visible text, `aria-label`, title or value reads like pay, buy, order, delete, submit, send, publish, authorize, save, share, install and similar (in all 15 interface languages); a form with several fields or a password field; an icon-only button inside a form; pressing Enter in a field that isn't in a form (chat boxes). If a button's visible text and its `aria-label` disagree, the card warns you;
-- going to another site in your tab, by navigating or by clicking a link, unless it's the site the task started on, a site you named in your message, or one you already allowed in this task;
+- going to another site in your tab, by navigating or by clicking a link, unless it's the site the task started on, a site you named in your message, or one you already allowed in this task. Once the conversation contains web content or files, it also asks before going to any address it put together itself, even on those sites; only exact addresses from your message, search results or pages it read go through without asking;
 - reading a page in the background whose address the agent put together itself. Without asking it only reads exact addresses from search results, links on pages it already read, addresses in your message, and research sites (GitHub, npm). Pages on `localhost` or your local network aren't read unless you typed the address; for pages opened in a background tab this also covers public domains that resolve to a local address (for PDFs only the address itself is checked);
-- saving a memory once the conversation contains web content (a page it read, a PDF, a selection).
+- typing text that isn't from your message into a page, once the conversation contains web content or files (a page can read what's typed into its fields without anything being submitted);
+- saving or deleting a memory once the conversation contains web content or files (a page it read, a PDF, a selection, a project file or an attachment).
+
+**Files count as web content.** Files you upload to a project or attach to a message often come from the web, so their names and contents are treated as untrusted: once the agent reads one, the cards above apply for the rest of the task, and instructions inside a file aren't followed as yours. File names aren't put into the model's instructions.
 
 Cards that involve an address show it with its query string, because an address can carry data out; very long addresses are shortened, keeping the domain and the start of the query string.
 
@@ -204,9 +209,9 @@ Clicking a suggestion sends it right away. Suggestions generated from the page a
 - **Prompt injection is not solved.** The agent reads many untrusted pages with your logged-in session. A malicious page can try to steer it into sending your conversation, memories or data from other sites somewhere, or into doing things for you. The cards cover the high-risk actions above; they are not complete protection. Small amounts of data can still leak through which links the agent chooses to follow or what it searches for.
 - Don't research or run tasks on untrusted pages while tabs with your bank, email or company admin are open, and watch it while a task is running.
 - Detecting risky clicks is a keyword and form-shape heuristic. It will miss some buttons.
-- Typing into a field on the same site doesn't ask. A malicious page can read what the agent types (for example with an `input` listener) and send it to its own server.
+- Typing your own words (from your message) into a field doesn't ask. A malicious page can read what the agent types (for example with an `input` listener) and send it to its own server.
 - Imported and installed skills are third-party instructions. While one is in your skill list (or you call it with `/name`), every task counts as untrusted: saving a memory, opening a link the agent built, or typing text you didn't give asks first. These skills show a *Third-party* label in the list. Skills you write yourself are trusted. Skills added before this version have no recorded source, so they're treated as third-party too; if you wrote one yourself, open it and choose **I wrote this myself**. Only install skills from sources you trust.
-- Memories and conversations are stored unencrypted in your browser and sent with each request to the model (through Browser Agent Cloud, or to your own provider).
+- Memories, projects (including their files) and conversations are stored unencrypted in your browser. Memories and project instructions are sent with each request to the model (through Browser Agent Cloud, or to your own provider).
 
 ## Languages
 

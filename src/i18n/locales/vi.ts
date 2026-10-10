@@ -405,6 +405,15 @@ const vi: Dict = {
   "confirm.forgetProject": "Agent muốn xóa ghi nhớ này khỏi dự án “{name}”. Cuộc trò chuyện này đã đọc nội dung web hoặc tệp, có thể chính chúng đã yêu cầu:",
   "project.memoryOff": "Bộ nhớ đang tắt (Cài đặt → Bộ nhớ), nên hiện các ghi nhớ này không được gửi cho Agent.",
   "card.rememberedProject": "Đã ghi nhớ trong {name}",
+  "composer.attach": "Đính kèm tệp",
+  "composer.attachDefault": "Hãy xem các tệp đính kèm.",
+  "attach.remove": "Bỏ {name}",
+  "attach.save": "Lưu vào dự án “{name}”",
+  "attach.saved": "Đã lưu vào dự án",
+  "attach.errTooMuch": "Chưa đính kèm {name}: các tệp trong một tin nhắn tổng cộng tối đa {max} ký tự. Hãy lưu tệp lớn vào một dự án, Agent sẽ đọc khi cần.",
+  "attach.errCount": "Mỗi tin nhắn đính kèm được tối đa {max} tệp.",
+  "attach.drop": "Thả để đính kèm tệp",
+  "history.attachments": "Tệp đính kèm: {names}",
 };
 
 export default vi;

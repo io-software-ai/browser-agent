@@ -422,6 +422,15 @@ const en = {
   "confirm.forgetProject": "The agent wants to delete this memory from the project “{name}”. This chat has read web content or files, which may have asked for it:",
   "project.memoryOff": "Memory is turned off (Settings → Memory), so these aren't sent to the agent right now.",
   "card.rememberedProject": "Remembered in {name}",
+  "composer.attach": "Attach files",
+  "composer.attachDefault": "Please look at the attached files.",
+  "attach.remove": "Remove {name}",
+  "attach.save": "Save to the project “{name}”",
+  "attach.saved": "Saved to the project",
+  "attach.errTooMuch": "{name} wasn't attached: files in one message can add up to {max} characters. Save large files to a project instead, and the agent will read them when needed.",
+  "attach.errCount": "You can attach up to {max} files to one message.",
+  "attach.drop": "Drop to attach files",
+  "history.attachments": "Attached: {names}",
 };
 
 export type Dict = typeof en;

@@ -405,6 +405,15 @@ const ja: Dict = {
   "confirm.forgetProject": "エージェントがプロジェクト「{name}」からこのメモリを削除しようとしています。この会話ではウェブページやファイルの内容を読んでいるため、それらに指示された可能性があります：",
   "project.memoryOff": "メモリはオフになっています（設定 → メモリ）。そのため、これらは今はエージェントに送られません。",
   "card.rememberedProject": "「{name}」に記憶しました",
+  "composer.attach": "ファイルを添付",
+  "composer.attachDefault": "添付したファイルを見てください。",
+  "attach.remove": "{name} を外す",
+  "attach.save": "プロジェクト「{name}」に保存",
+  "attach.saved": "プロジェクトに保存済み",
+  "attach.errTooMuch": "{name} は添付されませんでした。1 つのメッセージに添付できるのは合計 {max} 文字までです。大きなファイルはプロジェクトに保存してください。エージェントが必要なときに読みます。",
+  "attach.errCount": "1 つのメッセージに添付できるファイルは {max} 個までです。",
+  "attach.drop": "ドロップしてファイルを添付",
+  "history.attachments": "添付：{names}",
 };
 
 export default ja;

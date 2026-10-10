@@ -42,6 +42,7 @@ export const IconSearch = () => <Svg sw={1.5}><circle cx="7" cy="7" r="4.5" /><p
 export const IconFolder = () => <Svg join><path d="M2 4.5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1z" /></Svg>;
 export const IconLink = () => <Svg join><path d="M6.8 9.2a2.6 2.6 0 003.7 0l2-2a2.6 2.6 0 00-3.7-3.7l-.9.9" /><path d="M9.2 6.8a2.6 2.6 0 00-3.7 0l-2 2a2.6 2.6 0 003.7 3.7l.9-.9" /></Svg>;
 export const IconFile = () => <Svg join><path d="M4 1.8h5l3 3v9.4H4z" /><path d="M9 1.8v3h3" /></Svg>;
+export const IconClip = () => <Svg join><path d="M13.2 7.6l-5.4 5.4a3.4 3.4 0 01-4.8-4.8l5.8-5.8a2.25 2.25 0 013.2 3.2L6.3 11.3a1.1 1.1 0 01-1.6-1.6l5.1-5.1" /></Svg>;
 export const IconShield = () => <Svg join><path d="M8 1.8l5 2v4c0 3-2.2 5.2-5 6.4-2.8-1.2-5-3.4-5-6.4v-4z" /><path d="M8 5.5v3M8 10.8v.2" /></Svg>;
 export const IconBookmark = () => <Svg join><path d="M4.5 2h7v12L8 11.2 4.5 14z" /></Svg>;
 export const IconGlobe = () => <Svg><circle cx="8" cy="8" r="6" /><path d="M2 8h12M8 2c1.7 1.8 2.5 3.8 2.5 6S9.7 12.2 8 14c-1.7-1.8-2.5-3.8-2.5-6S6.3 3.8 8 2z" /></Svg>;

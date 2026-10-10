@@ -31,6 +31,7 @@
 **Beraksi di halaman**
 - Alat: membaca halaman, mengklik, mengetik (termasuk dropdown `<select>`), menggulir, membuka URL. Model mendapat daftar bernomor elemen interaktif dan mengklik `ref: 12`, bukan menebak-nebak CSS selector.
 - Pilih teks di halaman dan tanyakan hanya tentang itu; seleksi tersebut dilampirkan ke pesan Anda, bukan seluruh tab.
+- Lampirkan file ke pesan: seret dan lepas, tempel, atau pilih file teks, kode, atau PDF, dan teksnya ikut terkirim bersama apa yang Anda ketik.
 - PDF: teks diekstrak dengan pdf.js. Penampil bawaan memungkinkan Anda memilih teks dalam PDF seperti di halaman biasa. PDF hasil pindai (tanpa lapisan teks) dapat dikirim ke Claude sebagai dokumen, setelah Anda mengonfirmasi biayanya.
 - Layar utama: saran berdasarkan halaman yang sedang Anda buka.
 
@@ -45,8 +46,9 @@
 - Kartu file: hasil sebagai file `csv`, `json`, `md`, `txt`, `tsv`, `xml`, `yaml`, `ics`, atau `vcf` yang bisa diunduh, dengan opsi salin dan pratinjau.
 
 **Milik Anda untuk disimpan**
+- Proyek: beri sebuah proyek instruksi, file, dan memorinya sendiri, lalu pilih skill mana yang dipakainya. Setiap percakapan di proyek dimulai dengan instruksinya; agen membuka file proyek hanya saat membutuhkannya.
 - Memori: katakan "ingat …" dan ia akan menyimpan fakta singkat tentang Anda lintas percakapan. Lihat, edit, atau matikan di Pengaturan.
-- Riwayat: 30 percakapan terakhir, dikelompokkan berdasarkan tanggal. Buka kembali dan lanjutkan, atau ekspor sebagai Markdown.
+- Riwayat: 30 percakapan terakhir dari setiap proyek, dikelompokkan berdasarkan tanggal. Buka kembali dan lanjutkan, atau ekspor sebagai Markdown.
 - 12 skill bawaan dan perintah `/`; tulis skill Anda sendiri, atau instal [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, format yang dipakai Claude Code) dari GitHub, skills.sh, atau ClawHub.
 - Antarmuka dalam 15 bahasa; tema terang dan gelap mengikuti sistem Anda.
 
@@ -177,7 +179,7 @@ Hanya nama dan deskripsi yang masuk ke system prompt; model memanggil `use_skill
 
 ## Keamanan & privasi
 
-**Alur data.** Sebuah permintaan ke model berisi pesan Anda, konten halaman yang dibaca agen (atau hanya seleksi Anda, atau PDF-nya), ringkasan halaman yang diriset, memori tersimpan Anda, dan nama skill Anda.
+**Alur data.** Sebuah permintaan ke model berisi pesan Anda, konten halaman yang dibaca agen (atau hanya seleksi Anda, atau PDF-nya), ringkasan halaman yang diriset, memori tersimpan Anda, dan nama skill Anda. Dalam sebuah proyek, permintaan itu juga berisi instruksi dan memori proyek; file yang Anda lampirkan ke pesan dan file proyek yang dibuka agen juga ikut dikirim.
 
 - *Mode Cloud* mengirim permintaan itu ke server Browser Agent Cloud, yang meneruskannya ke penyedia model dan mengalirkan balasannya kembali. Server menyimpan catatan penggunaan — model apa, berapa token, halaman, pencarian, dan kredit yang dipakai sebuah tugas — untuk menghitung kredit. Server tidak menyimpan pesan Anda, konten halaman, atau balasan model; jika penyedia model mengembalikan error, pesan error itu mungkin disimpan bersama catatan penggunaan untuk keperluan debugging.
 - *Kunci Anda sendiri* mengirim permintaan langsung dari browser Anda ke penyedia Anda. Tidak ada apa pun tentang tugas Anda yang sampai ke server Browser Agent; satu-satunya kontak adalah pendaftaran anonim yang dilakukan saat ekstensi dipasang.
@@ -189,9 +191,12 @@ Percakapan, memori, skill, pengaturan, dan kunci API Anda hanya disimpan di `chr
 **Yang memerlukan *Izinkan* Anda.** Aksi berikut menampilkan kartu di side panel dan tidak berjalan sampai Anda menekan *Izinkan*. Kartu ini berada di halaman milik ekstensi sendiri, yang tidak bisa diklikkan oleh situs web untuk Anda:
 
 - klik dan pengiriman formulir yang terlihat tak bisa dibatalkan: teks yang terlihat pada tombol, `aria-label`, title, atau value terbaca seperti bayar, beli, pesan, hapus, kirim, publikasikan, otorisasi, simpan, bagikan, instal, dan sejenisnya (dalam semua 15 bahasa antarmuka); formulir dengan beberapa kolom atau kolom kata sandi; tombol hanya-ikon di dalam formulir; menekan Enter di kolom yang bukan bagian formulir (kotak chat). Jika teks tombol yang terlihat dan `aria-label`-nya tidak sesuai, kartu akan memperingatkan Anda;
-- pergi ke situs lain di tab Anda, baik dengan navigasi maupun mengeklik tautan, kecuali itu situs tempat tugas dimulai, situs yang Anda sebut dalam pesan Anda, atau yang sudah Anda izinkan dalam tugas ini;
+- pergi ke situs lain di tab Anda, baik dengan navigasi maupun mengeklik tautan, kecuali itu situs tempat tugas dimulai, situs yang Anda sebut dalam pesan Anda, atau yang sudah Anda izinkan dalam tugas ini. Setelah percakapan berisi konten web atau file, agen juga bertanya sebelum pergi ke alamat apa pun yang disusunnya sendiri, bahkan di situs-situs itu; hanya alamat persis dari pesan Anda, hasil pencarian, atau halaman yang dibacanya yang lolos tanpa bertanya;
 - membaca di latar belakang halaman yang alamatnya disusun sendiri oleh agen. Tanpa bertanya, ia hanya membaca alamat persis dari hasil pencarian, tautan di halaman yang sudah dibacanya, alamat dalam pesan Anda, dan situs riset (GitHub, npm). Halaman di `localhost` atau jaringan lokal Anda tidak dibaca kecuali Anda sendiri yang mengetik alamatnya; untuk halaman yang dibuka di tab latar belakang, ini juga mencakup domain publik yang mengarah ke alamat lokal (untuk PDF hanya alamatnya sendiri yang diperiksa);
-- menyimpan memori setelah percakapan berisi konten web (halaman yang dibaca, PDF, atau seleksi).
+- mengetik teks yang bukan dari pesan Anda ke dalam halaman, setelah percakapan berisi konten web atau file (halaman bisa membaca apa yang diketik di kolomnya tanpa ada yang dikirim);
+- menyimpan atau menghapus memori setelah percakapan berisi konten web atau file (halaman yang dibaca, PDF, seleksi, file proyek, atau lampiran).
+
+**File diperlakukan seperti konten web.** File yang Anda unggah ke proyek atau lampirkan ke pesan sering berasal dari web, jadi nama dan isinya diperlakukan sebagai tidak tepercaya: setelah agen membaca salah satunya, kartu-kartu di atas berlaku selama sisa tugas, dan instruksi di dalam file tidak diikuti seolah-olah itu instruksi Anda. Nama file tidak dimasukkan ke dalam instruksi untuk model.
 
 Kartu yang melibatkan alamat menampilkannya beserta query string-nya, karena alamat bisa membawa data keluar; alamat yang sangat panjang dipersingkat, dengan domain dan awal query string tetap dipertahankan.
 
@@ -204,9 +209,9 @@ Mengklik saran akan langsung mengirimkannya. Saran yang dihasilkan dari halaman 
 - **Prompt injection belum terselesaikan.** Agen membaca banyak halaman yang tidak tepercaya dengan sesi login Anda. Halaman berbahaya bisa mencoba mengarahkannya untuk mengirim percakapan, memori, atau data dari situs lain ke suatu tempat, atau melakukan sesuatu atas nama Anda. Kartu-kartu itu menutupi aksi berisiko tinggi di atas; itu bukan perlindungan yang lengkap. Data dalam jumlah kecil masih bisa bocor lewat tautan mana yang dipilih agen untuk diikuti atau apa yang dicarinya.
 - Jangan meriset atau menjalankan tugas di halaman yang tidak tepercaya saat tab bank, email, atau admin perusahaan Anda sedang terbuka, dan awasi agen saat tugas berjalan.
 - Deteksi klik berisiko adalah heuristik kata kunci dan bentuk formulir. Ia akan melewatkan beberapa tombol.
-- Mengetik di kolom pada situs yang sama tidak akan bertanya. Halaman berbahaya bisa membaca apa yang diketik agen (misalnya dengan listener `input`) dan mengirimkannya ke servernya sendiri.
+- Mengetik kata-kata Anda sendiri (dari pesan Anda) di sebuah kolom tidak akan bertanya. Halaman berbahaya bisa membaca apa yang diketik agen (misalnya dengan listener `input`) dan mengirimkannya ke servernya sendiri.
 - Skill yang diimpor dan diinstal adalah instruksi pihak ketiga. Selama salah satunya ada di daftar skill Anda (atau Anda memanggilnya dengan `/name`), setiap tugas dianggap tidak tepercaya: menyimpan memori, membuka tautan yang disusun agen, atau mengetik teks yang tidak Anda berikan akan bertanya dulu. Skill ini menampilkan label *Pihak ketiga* di daftar. Skill yang Anda tulis sendiri dianggap tepercaya. Skill yang ditambahkan sebelum versi ini tidak punya catatan sumber, jadi juga diperlakukan sebagai pihak ketiga; jika Anda menulisnya sendiri, buka skill itu dan pilih **Saya menulis ini sendiri**. Instal skill hanya dari sumber yang Anda percaya.
-- Memori dan percakapan disimpan tanpa enkripsi di browser Anda dan dikirim ke model pada setiap permintaan (lewat Browser Agent Cloud, atau ke penyedia Anda sendiri).
+- Memori, proyek (termasuk file-nya), dan percakapan disimpan tanpa enkripsi di browser Anda. Memori dan instruksi proyek dikirim ke model pada setiap permintaan (lewat Browser Agent Cloud, atau ke penyedia Anda sendiri).
 
 ## Bahasa
 
