@@ -30,7 +30,7 @@ FEATURES
 • Selected text: select something on the page and ask about just that
 • PDF reading, including scanned PDFs with no text layer (sent to Claude as images, only after you allow it — see Privacy below)
 • 12 built-in skills. Type / to pick one: /summarize, /translate, /extract, /compare, /explain, /thread, /reply, /fill-form, /review-pr, /checklist, /decide, /grill-me
-• Write your own skills in Markdown (SKILL.md files import as-is)
+• Write your own skills in Markdown, or install them from GitHub, skills.sh or ClawHub (Agent Skills standard: SKILL.md, skill folders, .zip). Installed skills are marked third-party and treated as untrusted; scripts bundled with a skill never run
 • Question cards: when a choice is needed, it asks you with clickable options
 • File downloads: get results as CSV, Markdown, JSON and other plain-text files
 • Memory: say "remember…" and it keeps short facts about you. View, edit or turn it off in Settings

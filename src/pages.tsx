@@ -3,13 +3,14 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ButtonHTML
 import { S, emit, setMemories, showToast } from "./store";
 import { persist, send, showView, openChat, deleteChat, resetChat, scheduleSuggestions, refreshMe, setMode, COMMANDS } from "./agent";
 import { addMemory, MAX_MEMORY_CHARS, MAX_MEMORIES } from "./memory";
-import { parseSkill, serializeSkill, cleanName, type Skill } from "./skills";
+import { parseSkill, serializeSkill, cleanName, LEGACY_SOURCE, type Skill } from "./skills";
+import { bundleSkills, fetchSkills, folderEntries, unzip, isZip, InstallError } from "./skill-install";
 import { toMarkdown, groupChats, MAX_CHATS, type Chat } from "./history";
 import { t, LANGS, langPref, setLangPref, currentLang, type Key } from "./i18n";
-import { IconBack, IconChevron, IconErr, IconMore, IconSearch } from "./icons";
+import { IconBack, IconChevron, IconErr, IconFile, IconFolder, IconGitHub, IconGlobe, IconGoogle, IconLink, IconMore, IconPlus, IconSearch, IconShield, IconUser } from "./icons";
 import { Select, type Opt } from "./select";
 import { ANTHROPIC_MODELS, PROVIDERS, PROVIDER_IDS, activeProvider, providerName, cleanBaseURL, baseURL, conf, currentModel, listModels, ready, type ProviderId } from "./providers";
-import { BACKEND, BackendError, signIn, signOut, type Provider } from "./backend";
+import { BACKEND, BackendError, signIn, signOut, type Me, type Provider } from "./backend";
 import { cloudModels, cloudReadLevels } from "./cloud-models";
 
 export type Route =
@@ -322,13 +323,28 @@ async function accountAction(run: () => Promise<boolean | void>) {
 const login = (p: Provider) => accountAction(() => signIn(p));
 const logout = () => accountAction(signOut);
 
-function SignedOut() {
+// 帳號區第一列：你是誰。未登入＝兩個一樣大的登入按鈕（Google 規範：不能比其他登入方式不醒目）
+function Identity({ me }: { me: Me }) {
   const off = S.busy || S.accountBusy;
+  const a = me.account;
   return (
-    <div className="list-row account-row">
-      <span className="row-text">{t("account.signInHint")}</span>
-      <button type="button" className="btn btn-ghost" id="account-google" disabled={off} onClick={() => login("google")}>{t("account.google")}</button>
-      <button type="button" className="btn btn-ghost" id="account-github" disabled={off} onClick={() => login("github")}>{t("account.github")}</button>
+    <div className="list-row account-id">
+      <div className="id-head">
+        {a ? <span className="avatar avatar-letter" aria-hidden="true">{(a.email ?? PROVIDER_NAME[a.provider])[0].toUpperCase()}</span>
+          : <span className="avatar" aria-hidden="true"><IconUser /></span>}
+        <span className="row-text">
+          <strong id="account-user">{a ? a.email ?? t("account.signedInNoEmail", { provider: PROVIDER_NAME[a.provider] }) : t("account.anon")}</strong>
+          <small>{a ? t("account.signedIn", { provider: PROVIDER_NAME[a.provider] }) : t("account.signInHint")}</small>
+        </span>
+        {a && <button type="button" className="btn btn-ghost btn-sm" id="account-logout" disabled={off} onClick={logout}>{t("account.signOut")}</button>}
+      </div>
+      {!a && (
+        <div className="sso">
+          <button type="button" className="btn sso-btn" id="account-google" disabled={off} onClick={() => login("google")}><IconGoogle /><span>{t("account.google")}</span></button>
+          <button type="button" className="btn sso-btn" id="account-github" disabled={off} onClick={() => login("github")}><IconGitHub /><span>{t("account.github")}</span></button>
+        </div>
+      )}
+      {S.accountMsg && <div className="notice" id="account-msg" role="alert">{t(S.accountMsg as Key)}</div>}
     </div>
   );
 }
@@ -354,32 +370,23 @@ function AccountSection() {
     <section className="account" id="account" aria-labelledby="account-title">
       <h2 className="group-title" id="account-title">{t("account.title")}</h2>
       <div className="list-group">
-        <div className="list-row account-row">
-          <span className="row-text">
-            <span id="account-plan"><strong>{me ? t(`plan.${me.plan}` as Key) : "…"}</strong></span>
-            {!me?.account && <small>{t("account.anon")}</small>}
-          </span>
-          <button type="button" className="btn btn-primary" id="account-upgrade" onClick={openUpgrade}>{t("account.upgrade")}</button>
-        </div>
-        {me && (me.account ? (
-          <div className="list-row account-row">
-            <span className="row-text" id="account-user">{me.account.email ? t("account.signedIn", { who: me.account.email, provider: PROVIDER_NAME[me.account.provider] }) : t("account.signedInNoEmail", { provider: PROVIDER_NAME[me.account.provider] })}</span>
-            <button type="button" className="btn btn-ghost" id="account-logout" disabled={S.busy || S.accountBusy} onClick={logout}>{t("account.signOut")}</button>
+        {me && <Identity me={me} />}
+        {/* 方案＋用量是一組：方案名稱、升級、用量條、重置日 */}
+        <div className="list-row account-plan">
+          <div className="plan-head">
+            <strong id="account-plan">{me ? t(`plan.${me.plan}` as Key) : "…"}</strong>
+            <button type="button" className="btn btn-primary btn-sm" id="account-upgrade" onClick={openUpgrade}>{t("account.upgrade")}</button>
           </div>
-        ) : <SignedOut />)}
-        {S.accountMsg && <div className="notice" id="account-msg" role="alert">{t(S.accountMsg as Key)}</div>}
-        {me ? (
-          <div className="list-row account-credits">
-            <span className="row-text">
-              {t("account.credits")}
-              <small id="account-credits">{t("account.creditsUsed", { used: me.credits_used, limit: me.credits_limit })}</small>
+          {me ? (
+            <>
               <progress className="meter" id="account-meter" max={me.credits_limit || 1} value={Math.min(me.credits_used, me.credits_limit)} aria-label={t("account.credits")} data-low={left === 0 ? "" : undefined} />
-              <small id="account-period">{t("account.periodEnd", { date: new Date(`${me.period_end}T00:00:00`).toLocaleDateString(currentLang(), { year: "numeric", month: "short", day: "numeric" }) })}</small>
-            </span>
-          </div>
-        ) : (
-          <div className="list-row"><span className="row-text"><small id="account-status">{S.meError ? t("account.loadFailed") : "…"}</small></span></div>
-        )}
+              <div className="plan-meta">
+                <small id="account-credits">{t("account.creditsUsed", { used: me.credits_used, limit: me.credits_limit })}</small>
+                <small id="account-period">{t("account.periodEnd", { date: new Date(`${me.period_end}T00:00:00`).toLocaleDateString(currentLang(), { month: "short", day: "numeric" }) })}</small>
+              </div>
+            </>
+          ) : <small id="account-status">{S.meError ? t("account.loadFailed") : "…"}</small>}
+        </div>
         {me?.kol_code && (
           <div className="list-row">
             <span className="row-text">{t("account.referral")}<small id="account-kol">{me.kol_code}</small></span>
@@ -619,49 +626,199 @@ export function MemoryPage({ nav }: { nav: Nav }) {
 
 // ---------- 技能 ----------
 
+// 技能合計的上限：chrome.storage.local 總共 10 MB，記憶與對話紀錄也存在裡面，不能被技能的附帶檔案擠掉
+const SKILLS_BYTES = 4 * 1024 * 1024;
+const bytesOf = (list: Skill[]) => new Blob([JSON.stringify(list)]).size;
+
 async function saveSkills(list: Skill[]) {
+  const before = S.skills;
+  if (bytesOf(list) > SKILLS_BYTES && bytesOf(list) > bytesOf(before)) throw new InstallError("skills.errStorage"); // 變小（刪除、改短）永遠可以
   S.skills = list;
   emit();
-  await persist({ skills: list });
+  // 附帶檔案的技能可能很大：存不進去（chrome.storage.local 上限 10 MB）就退回，不要畫面上有、重開就不見
+  try { await persist({ skills: list }); } catch { S.skills = before; emit(); throw new InstallError("skills.errStorage"); }
+}
+
+const failText = (e: unknown) => (e instanceof InstallError ? t(e.key, e.params) : String((e as Error)?.message ?? e));
+
+const MAX_SKILLS = 100; // 說明每輪都進系統提示詞：一個 zip 塞上千個技能＝每次請求都很貴
+type Found = { skills: Skill[]; skipped: string[] };
+
+// 本機檔案 → 技能（還沒加進清單，先給使用者預覽）：.md 一個檔一個技能；.zip／.skill 與資料夾照技能資料夾的結構拆
+async function readFiles(files: File[], folder: boolean): Promise<Found> {
+  if (folder) return bundleSkills(folderEntries(files), (root) => root || files[0]?.webkitRelativePath.split("/")[0] || "folder");
+  const found: Found = { skills: [], skipped: [] };
+  for (const file of files) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (isZip(bytes)) {
+      const out = await bundleSkills(unzip(bytes.buffer), (root) => (root ? `${file.name}/${root}` : file.name), file.name.replace(/\.(zip|skill)$/i, ""));
+      found.skills.push(...out.skills); found.skipped.push(...out.skipped);
+      if (!out.skills.length && !out.skipped.length) found.skipped.push(file.name);
+      continue;
+    }
+    // Claude Code 的技能檔名一律是 SKILL.md，那種就只能靠 frontmatter 裡的 name
+    const skill = parseSkill(new TextDecoder().decode(bytes), file.name.replace(/\.md$/i, "").replace(/^SKILL$/i, ""));
+    if (!skill.name || !skill.body) { found.skipped.push(file.name); continue; }
+    found.skills.push({ ...skill, description: skill.description.slice(0, 1024), source: file.name });
+  }
+  return found;
+}
+
+// 預覽卡確認過的技能加進清單：同名的取代（卡片上已標出），超過上限的不加
+async function addSkills(picked: Skill[]) {
+  let list = [...S.skills];
+  const added: string[] = [];
+  const over: string[] = [];
+  for (const skill of picked) {
+    const i = list.findIndex((s) => s.name === skill.name);
+    if (i === -1 && list.length >= MAX_SKILLS) { over.push(`/${skill.name}`); continue; }
+    list = i === -1 ? [...list, skill] : list.map((s, j) => (j === i ? skill : s));
+    added.push(`/${skill.name}`);
+  }
+  await saveSkills(list);
+  return { added, over };
+}
+
+const shortSource = (s: string) => s.replace(/^https?:\/\//, "").replace(/\/tree\/HEAD(?=\/|$)/, "");
+
+// 次要的來源：文字按鈕。label 包 input：點得到、鍵盤 focus 在 label 上按 Enter 由瀏覽器開檔案選擇
+function FileButton({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <label className="text-btn" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.querySelector("input")!.click(); } }}>
+      {icon}{label}{children}
+    </label>
+  );
+}
+
+type Preview = Found & { picked: boolean[] };
+
+// 安裝前預覽：第三方內容先讓使用者看名稱、說明、來源、會不會取代現有的，勾選後才裝
+function PreviewCard({ preview, setPreview, busy, onInstall }: { preview: Preview; setPreview: (p: Preview | null) => void; busy: boolean; onInstall: () => void }) {
+  const many = preview.skills.length > 1;
+  return (
+    <section className="card preview-card" id="skill-preview" aria-labelledby="skill-preview-title">
+      <div className="card-title" id="skill-preview-title"><IconShield />{t("skills.previewTitle")}</div>
+      <div className="preview-list">
+        {preview.skills.map((s, i) => {
+          const files = Object.keys(s.files ?? {}).length;
+          const Row = many ? "label" : "div";
+          return (
+            <Row key={i} className="preview-item">
+              {many && <input type="checkbox" checked={preview.picked[i]} onChange={(e) => setPreview({ ...preview, picked: preview.picked.map((x, j) => (j === i ? e.target.checked : x)) })} />}
+              <span className="row-text">
+                <strong>/{s.name}{S.skills.some((x) => x.name === s.name) && <span className="badge warn">{t("skills.replaces")}</span>}</strong>
+                <small>{s.description || t("slash.noDescription")}</small>
+                <span className="preview-meta"><span className="preview-source">{shortSource(s.source!)}</span>{files > 0 && <span>{t("skills.filesCount", { n: files })}</span>}</span>
+              </span>
+            </Row>
+          );
+        })}
+      </div>
+      {!!preview.skipped.length && (
+        <details className="preview-skipped"><summary>{t("skills.skipped", { n: preview.skipped.length })}</summary>{preview.skipped.join(t("common.listSep"))}</details>
+      )}
+      <p className="preview-warn">{t("skills.previewWarn")}</p>
+      <div className="card-actions">
+        <button className="btn btn-primary sm" type="button" id="skill-preview-install" disabled={busy || !preview.picked.some(Boolean)} onClick={onInstall}>{busy ? t("skills.installing") : t("skills.install")}</button>
+        <button className="btn btn-ghost sm" type="button" id="skill-preview-cancel" disabled={busy} onClick={() => setPreview(null)}>{t("common.cancel")}</button>
+      </div>
+    </section>
+  );
 }
 
 export function SkillsPage({ nav }: { nav: Nav }) {
-  const importSkills = async (e: ChangeEvent<HTMLInputElement>) => {
+  const [src, setSrc] = useState("");
+  const [busy, setBusy] = useState<"" | "loading" | "saving">("");
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState("");
+  const [preview, setPreview] = useState<Preview | null>(null);
+
+  // 抓／讀到的技能先進預覽卡；跟內建指令同名的直接列進「沒有匯入」
+  const load = async (get: () => Promise<Found>) => {
+    setBusy("loading"); setErr(""); setDone(""); setPreview(null);
+    try {
+      const { skills, skipped } = await get();
+      const ok = skills.filter((s) => !COMMANDS.some((c) => c.name === s.name));
+      if (!ok.length) throw new InstallError("skills.errNotFound");
+      setPreview({ skills: ok, skipped: [...skipped, ...skills.filter((s) => !ok.includes(s)).map((s) => `/${s.name}`)], picked: ok.map(() => true) });
+    } catch (e) {
+      setErr(failText(e));
+    } finally {
+      setBusy("");
+    }
+  };
+  const install = async () => {
+    if (!preview) return;
+    setBusy("saving"); setErr("");
+    try {
+      const { added, over } = await addSkills(preview.skills.filter((_, i) => preview.picked[i]));
+      if (added.length) setDone(t("skills.installed", { names: added.join(t("common.listSep")) }));
+      if (over.length) setErr(t("skills.errLimit", { names: over.join(t("common.listSep")) }));
+      setPreview(null);
+      setSrc("");
+    } catch (e) {
+      setErr(failText(e));
+    } finally {
+      setBusy("");
+    }
+  };
+  const pick = (folder: boolean) => (e: ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const files = [...(input.files ?? [])];
-    const skipped: string[] = [];
-    let list = [...S.skills];
-    for (const file of files) {
-      // Claude Code 的技能檔名一律是 SKILL.md，那種就只能靠 frontmatter 裡的 name
-      const skill = parseSkill(await file.text(), file.name.replace(/\.md$/i, "").replace(/^SKILL$/i, ""));
-      if (!skill.name || !skill.body) { skipped.push(file.name); continue; }
-      const i = list.findIndex((s) => s.name === skill.name);
-      if (i === -1) list.push(skill);
-      else if (confirm(t("skills.importOverwrite", { name: skill.name }))) list = list.map((s, j) => (j === i ? skill : s));
-    }
     input.value = "";
-    await saveSkills(list);
-    if (skipped.length) alert(t("skills.importSkipped", { files: skipped.join(t("common.listSep")) }));
+    if (files.length) load(() => readFiles(files, folder));
   };
+
+  // 清單分兩組：裝來的（第三方）在上，內建與自己寫的在下（「自己寫一個」放在這組標題旁）；id 用在 S.skills 的位置
+  const rows = S.skills.map((skill, i) => ({ skill, i }));
+  const installed = rows.filter((r) => r.skill.source);
+  const other = rows.filter((r) => !r.skill.source);
+  const list = (items: typeof rows) => (
+    <div className="list-group">
+      {items.map(({ skill, i }) => (
+        <button key={i} type="button" className="list-row nav-row skill-row" id={`skill-${i}`} onClick={() => nav.push({ name: "skill", skill })}>
+          <span className="row-text"><strong>/{skill.name}{skill.source && <span className="badge">{t("skills.thirdParty")}</span>}</strong><small>{skill.description || t("slash.noDescription")}</small></span>
+          <IconChevron />
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <Page id="skills" title={t("skills.title")} onBack={nav.pop}>
-      <div className="actions">
-        <button className="btn btn-ghost" type="button" id="skill-new" onClick={() => nav.push({ name: "skill", skill: null })}>{t("skills.new")}</button>
-        {/* label 包 input：點得到、鍵盤 focus 在 label 上按 Enter 由瀏覽器開檔案選擇 */}
-        <label className="btn btn-ghost" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.querySelector("input")!.click(); } }}>
-          {t("skills.import")}<input type="file" id="skill-import" accept=".md,text/markdown" multiple hidden onChange={importSkills} />
-        </label>
-      </div>
-      {!S.skills.length ? <div className="skill-empty">{t("skills.empty")}</div> : (
-        <div className="list-group" id="skill-list">
-          {S.skills.map((skill, i) => (
-            <button key={i} type="button" className="list-row nav-row skill-row" id={`skill-${i}`} onClick={() => nav.push({ name: "skill", skill })}>
-              <span className="row-text"><strong>/{skill.name}</strong><small>{skill.description || t("slash.noDescription")}</small></span>
-              <IconChevron />
-            </button>
-          ))}
+      <section className="card add-card" aria-labelledby="skill-add-title">
+        <div className="add-head">
+          <strong id="skill-add-title">{t("skills.addTitle")}</strong>
+          <small>{t("skills.addHint")}</small>
         </div>
+        <form className="input-group" id="skill-install-form" onSubmit={(e) => { e.preventDefault(); if (src.trim() && !busy) load(() => fetchSkills(src)); }}>
+          <IconLink />
+          <input id="skill-install" aria-label={t("skills.addTitle")} placeholder={t("skills.installPlaceholder")} autoComplete="off" spellCheck={false} value={src} onChange={(e) => { setSrc(e.target.value); setErr(""); }} />
+          <button className="btn btn-primary" type="submit" id="skill-install-btn" disabled={!!busy || !src.trim()}>{busy === "loading" ? t("skills.fetching") : t("skills.install")}</button>
+        </form>
+        <div className="form-error" id="skill-install-error" role="alert">{err}</div>
+        {done && <div className="notice" id="skill-installed" role="status">{done}</div>}
+        <div className="source-links">
+          <a className="text-btn" href="https://skills.sh" target="_blank" rel="noopener noreferrer"><IconGlobe />{t("skills.browse")}</a>
+          <FileButton label={t("skills.import")} icon={<IconFile />}><input type="file" id="skill-import" accept=".md,.zip,.skill,text/markdown,application/zip" multiple hidden onChange={pick(false)} /></FileButton>
+          {/* webkitdirectory 不在 React 的屬性型別裡 */}
+          <FileButton label={t("skills.importFolder")} icon={<IconFolder />}><input type="file" id="skill-import-folder" hidden onChange={pick(true)} {...{ webkitdirectory: "" }} /></FileButton>
+        </div>
+      </section>
+      {preview && <PreviewCard preview={preview} setPreview={setPreview} busy={busy === "saving"} onInstall={install} />}
+      {!!installed.length && (
+        <section className="skill-group" id="skill-group-installed">
+          <div className="group-head"><h2 className="group-title">{t("skills.groupInstalled")}<span className="group-count">{installed.length}</span></h2></div>
+          {list(installed)}
+        </section>
       )}
+      <section className="skill-group" id="skill-group-other">
+        <div className="group-head">
+          <h2 className="group-title">{t("skills.groupOther")}{!!other.length && <span className="group-count">{other.length}</span>}</h2>
+          <button className="text-btn" type="button" id="skill-new" onClick={() => nav.push({ name: "skill", skill: null })}><IconPlus />{t("skills.new")}</button>
+        </div>
+        {other.length ? list(other) : !S.skills.length && <div className="skill-empty">{t("skills.empty")}</div>}
+      </section>
       <div className="hint">{rich(t("skills.hint"), { slash: <code>/</code> })}</div>
     </Page>
   );
@@ -675,14 +832,16 @@ export function SkillEditorPage({ skill: editing, nav }: { skill: Skill | null; 
   const dirty = name !== (editing?.name ?? "") || desc !== (editing?.description ?? "") || body !== (editing?.body ?? "");
   const back = () => { if (!dirty || confirm(t("skillEditor.discardConfirm"))) nav.pop(); };
 
-  const save = async (e: FormEvent) => {
+  // trust：來源不明的舊技能，使用者確認是自己寫的 → 拿掉來源（不再當第三方）
+  const save = async (e: { preventDefault(): void }, trust = false) => {
     e.preventDefault();
-    // model 欄位編輯器沒有顯示，但要保留（匯入的 SKILL.md、預設技能的 model: haiku）
-    const skill: Skill = { name: cleanName(name), description: desc.trim(), body: body.trim(), ...(editing?.model ? { model: editing.model } : {}) };
+    // 編輯器沒顯示的欄位要保留（model、來源、附帶檔案、disable-model-invocation 等）
+    const skill: Skill = { ...editing, name: cleanName(name), description: desc.trim(), body: body.trim() };
+    if (trust) delete skill.source;
     if (!skill.name || !skill.body) return setErr(t("skillEditor.errRequired"));
     if (COMMANDS.some((c) => c.name === skill.name)) return setErr(t("skillEditor.errReserved", { name: skill.name }));
     if (S.skills.some((s) => s.name === skill.name && s !== editing)) return setErr(t("skillEditor.errDuplicate", { name: skill.name }));
-    await saveSkills(editing ? S.skills.map((s) => (s === editing ? skill : s)) : [...S.skills, skill]);
+    try { await saveSkills(editing ? S.skills.map((s) => (s === editing ? skill : s)) : [...S.skills, skill]); } catch (err) { return setErr(failText(err)); }
     nav.pop();
   };
 
@@ -701,10 +860,14 @@ export function SkillEditorPage({ skill: editing, nav }: { skill: Skill | null; 
           <label className="field-label" htmlFor="skill-body">{t("skillEditor.body")}</label>
           <textarea className="input skill-body" id="skill-body" required placeholder={t("skillEditor.bodyPlaceholder")} value={body} onChange={(e) => setBody(e.target.value)} />
         </div>
+        {editing?.source && <div className="hint" id="skill-source">{editing.source === LEGACY_SOURCE ? t("skillEditor.sourceLegacy") : t("skillEditor.source", { source: editing.source })}</div>}
+        {editing?.files && <div className="hint" id="skill-files">{t("skillEditor.files", { files: Object.keys(editing.files).join(t("common.listSep")) })}</div>}
         <div className="form-error" id="skill-error">{err}</div>
         <div className="actions">
           <button className="btn btn-primary" type="submit">{t("skillEditor.save")}</button>
           {editing && <button className="btn btn-ghost" type="button" id="skill-export" onClick={() => download(`${editing.name}.md`, serializeSkill(editing))}>{t("skillEditor.export")}</button>}
+          {/* 只給來源不明的舊技能：從網址／檔案裝的第三方技能不能一鍵洗成可信 */}
+          {editing?.source === LEGACY_SOURCE && <button className="btn btn-ghost" type="button" id="skill-trust" onClick={(e) => { if (confirm(t("skillEditor.trustConfirm"))) save(e, true); }}>{t("skillEditor.trust")}</button>}
         </div>
       </form>
       {editing && (

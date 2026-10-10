@@ -47,7 +47,7 @@
 **À vous de garder**
 - Mémoire : dites « souviens-toi … » et il retient de courts faits sur vous d'une discussion à l'autre. Consultez-la, modifiez-la ou désactivez-la dans les Paramètres.
 - Historique : les 30 dernières conversations, regroupées par date. Rouvrez-en une et continuez, ou exportez-la en Markdown.
-- 12 compétences intégrées et commandes `/` ; écrivez les vôtres au même format `SKILL.md` que Claude Code.
+- 12 compétences intégrées et commandes `/` ; écrivez les vôtres ou installez des [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, le format utilisé par Claude Code) depuis GitHub, skills.sh ou ClawHub.
 - Interface en 15 langues ; le thème clair ou sombre suit celui de votre système.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Gérez les compétences dans **Paramètres → Compétences** : créer, modifier, importer des fichiers `.md`, exporter. Les fichiers `SKILL.md` de Claude Code s'importent tels quels. Une ligne facultative `model:` (par exemple `model: haiku`) exécute cette compétence sur un modèle Claude moins cher.
+Gérez les compétences dans **Paramètres → Compétences** : créer, modifier, exporter, importer un fichier `.md`, `.zip`/`.skill` ou un dossier de compétence entier, ou installer depuis un lien — `owner/repo/skill`, un lien de dossier GitHub, une page skills.sh ou sa commande `npx skills add …`, une page ClawHub, ou tout lien https vers un `SKILL.md` ou un zip. Les compétences suivent le standard [Agent Skills](https://agentskills.io/specification), le même format `SKILL.md` que Claude Code et d'autres agents. Les fichiers fournis avec une compétence (par exemple `references/forms.md`) sont stockés et lus par le modèle uniquement lorsque les instructions y renvoient ; les scripts fournis sont conservés sous forme de texte et ne sont jamais exécutés. Une ligne facultative `model:` (par exemple `model: haiku`) exécute cette compétence sur un modèle Claude moins cher ; `disable-model-invocation: true` et `user-invocable: false` fonctionnent comme dans Claude Code, et `$ARGUMENTS` est remplacé par ce que vous saisissez après `/name`.
 
 Seuls les noms et descriptions entrent dans le system prompt ; le modèle appelle `use_skill` pour charger les instructions complètes quand il en a besoin, et taper `/nom` les joint directement. Les compétences sont des prompts : lisez-en une avant de l'importer.
 
@@ -205,7 +205,7 @@ Cliquer sur une suggestion l'envoie immédiatement. Les suggestions générées 
 - Ne lancez pas de recherches ni de tâches sur des pages non fiables pendant que des onglets de votre banque, de votre messagerie ou de l'administration de votre entreprise sont ouverts, et surveillez-le pendant l'exécution d'une tâche.
 - La détection des clics risqués est une heuristique fondée sur des mots-clés et la forme du formulaire. Elle laissera passer certains boutons.
 - Saisir dans un champ du même site ne demande rien. Une page malveillante peut lire ce que l'agent saisit (par exemple avec un écouteur `input`) et l'envoyer à son propre serveur.
-- Un `SKILL.md` importé constitue des instructions de confiance. N'importez que des compétences que vous avez lues.
+- Les compétences importées et installées sont des instructions tierces. Tant que l'une d'elles figure dans votre liste de compétences (ou que vous l'appelez avec `/name`), toute tâche est considérée comme non fiable : enregistrer un souvenir, ouvrir un lien construit par l'agent ou saisir un texte que vous n'avez pas fourni demande d'abord votre accord. Ces compétences affichent une étiquette *Tiers* dans la liste. Les compétences que vous écrivez vous-même sont fiables. Les compétences ajoutées avant cette version n'ont pas de source enregistrée et sont donc aussi traitées comme tierces ; si vous en avez écrit une vous-même, ouvrez-la et choisissez **Je l'ai écrite moi-même**. N'installez que des compétences provenant de sources de confiance.
 - Les souvenirs et conversations sont stockés non chiffrés dans votre navigateur et envoyés avec chaque requête au modèle (via Browser Agent Cloud, ou à votre propre fournisseur).
 
 ## Langues

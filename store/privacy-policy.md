@@ -13,7 +13,7 @@ Stored only in your browser, in `chrome.storage.local`:
 
 - **Your conversations** (the last 30), including page text that was part of them, the titles and addresses of research sources, and files the assistant created
 - **Memories**: short facts you asked it to remember
-- **Skills and settings** (model, language, theme, etc.)
+- **Skills** (including the text files bundled with skills you import or install) **and settings** (model, language, theme, etc.)
 - **Your API key(s)** and endpoint addresses, if you use your own key
 - **A device token**: a random code that identifies this installation to Browser Agent Cloud
 
@@ -67,6 +67,10 @@ When answering needs pages other than the one you're on, the assistant uses your
 - **Page summaries**: the text of each page it reads is condensed by a small Claude model (Haiku) before the main model sees it. In Cloud mode this goes through our servers to Anthropic like any other request; with your own Anthropic key it goes straight to Anthropic. With other providers there is no summary step, and the page text goes to your provider with the next request.
 - To avoid reading pages on your local network unless you typed their address, the extension checks the address of each page and, for pages opened in a background tab, the server address the page actually came from. That server address is used only for this check and is not stored or sent anywhere.
 
+## Installing skills
+
+When you install a skill from a link in Settings → Skills, the extension downloads it directly from your browser: from GitHub (`api.github.com` and `raw.githubusercontent.com`) for GitHub and skills.sh links, from `clawhub.ai` for ClawHub links, or from the https address you entered. Those sites receive a normal download request, including your IP address, but no cookies and nothing from your conversations, memories or other skills. Nothing is downloaded until you click Install, and each skill's name, source and description are shown to you before it is added. Skills you import from your own files are read locally and not sent anywhere. Scripts bundled with a skill are stored as text and never run.
+
 ## Home suggestions
 
 While the side panel shows the start screen of a new conversation, it can suggest three things to ask about the page you're on. To make them, each time you open the panel, switch tabs or a page finishes loading, the current page's title, address and first ~800 characters are sent to the AI model — through our servers in Cloud mode, or to your provider with your own key. This is on by default in Cloud mode and for people who used an API key with an early version of Browser Agent, and off otherwise; you can switch it in Settings.
@@ -111,7 +115,7 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 
 - **你的對話**（最近 30 則），包含對話中出現的網頁文字、研究來源的標題與網址，以及助理幫你產生的檔案
 - **記憶**：你要它記住的簡短事實
-- **技能**與設定（模型、語言、主題等）
+- **技能**（包含你匯入或安裝的技能附帶的文字檔）與設定（模型、語言、主題等）
 - **你的 API 金鑰**與端點網址（如果你用自己的金鑰）
 - **裝置代碼**：一組隨機代碼，讓 Browser Agent Cloud 認得這個安裝
 
@@ -164,6 +168,10 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 - **閱讀網頁**：它讀的頁面會在背景分頁打開，帶著你的 cookie 和登入狀態，就跟你自己打開一樣，所以那些網站收到的就是一般造訪會送出的資訊。讀完分頁就會關掉。打開頁面前，擴充功能可能會先送一個簡短的請求（HEAD，帶著你的 cookie）確認網址是不是 PDF；PDF 由擴充功能直接下載（一樣帶著你的 cookie），不會開分頁。
 - **頁面整理**：讀到的每一頁，會先由一個小型的 Claude 模型（Haiku）濃縮，主要模型看到的是整理後的內容。Cloud 模式下，這跟其他請求一樣經過我們的伺服器送到 Anthropic；用自己的 Anthropic 金鑰時直接送到 Anthropic。用其他供應商時沒有整理這一步，頁面文字會在下一次請求時送到你的供應商。
 - 為了不讀取你區域網路裡的頁面（除非網址是你自己打的），擴充功能會檢查每個頁面的網址；在背景分頁打開的頁面，還會檢查它實際是從哪個伺服器位址載入的。這個伺服器位址只用來做這項檢查，不會儲存，也不會送到任何地方。
+
+## 安裝技能
+
+在 設定 → 技能 從連結安裝技能時，擴充功能會從你的瀏覽器直接下載：GitHub 與 skills.sh 的連結從 GitHub（`api.github.com` 與 `raw.githubusercontent.com`）下載，ClawHub 的連結從 `clawhub.ai` 下載，其他則從你輸入的 https 網址下載。這些網站收到的是一般的下載請求，包含你的 IP 位址，但不帶 cookie，也不包含你的對話、記憶或其他技能。你按下「安裝」之前不會下載任何東西，每個技能加入前都會先顯示名稱、來源與說明讓你確認。從你自己的檔案匯入的技能只在本機讀取，不會送到任何地方。技能附帶的程式只存成文字，永遠不會執行。
 
 ## 首頁建議
 

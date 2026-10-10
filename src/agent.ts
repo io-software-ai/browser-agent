@@ -2,7 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { systemPrompt, tools, MEMORY_TOOLS, CARD_TOOLS, newTask, type Summarizer } from "./shared";
 import { memoryPrompt } from "./memory";
-import { skillsPrompt, expandSlash, slashSkill, skillModel, type Skill } from "./skills";
+import { skillsPrompt, expandSlash, slashSkill, skillModel, untrustedSkill, thirdPartyListed, LEGACY_SOURCE, type Skill } from "./skills";
 import { HAIKU, migrateModel } from "./models";
 import { cloudModels } from "./cloud-models";
 import { usdOf, fmtUsd } from "./pricing";
@@ -206,8 +206,8 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
   const turnTools = tools.filter((x) => (S.memoryOn || !MEMORY_TOOLS.includes(x.name)) && (provider === "anthropic" || x.name !== "screenshot"));
   const startTab = await activeTab();
   const tabId = startTab.id!;
-  // 這則對話裡已經有網頁來的內容（之前讀過頁面、這則或之前附了選取文字）＝一開始就算不可信
-  const tainted = typed === null || S.messages.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") : m.content.some((b) => b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot"].includes(b.name!))));
+  // 這則對話裡已經有網頁來的內容（之前讀過頁面、這則或之前附了選取文字）或第三方技能的指示（系統提示詞裡的說明、/名稱 展開、use_skill 的結果）＝一開始就算不可信
+  const tainted = typed === null || thirdPartyListed(S.skills) || S.messages.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
   const task = newTask(startTab.url, typed ?? "", tainted, cloud ? readLimit : undefined); // cloud：任務開始時釘住；byok 照舊即時讀 S.pageChars
   if (!task.question) task.question = userText.slice(0, 500); // 首頁建議：沒有使用者打的字，用建議的提示詞
   if (provider === "anthropic" && S.summarizePages) task.summarize = summarizer(cloud, () => (cloud ? baHeaders("task", session, usage, readLimit) : undefined), stats);
@@ -555,7 +555,7 @@ function upgradeBody(s: Skill): boolean {
 }
 
 export async function init() {
-  const saved: Record<string, any> = await chrome.storage.local.get(["mode", "provider", "providers", "key", "model", "effort", "skills", "pageChars", "suggestOn", "memories", "memoryOn", "summarizePages", "chats", "seededSkills", "lang", "consent"]);
+  const saved: Record<string, any> = await chrome.storage.local.get(["mode", "provider", "providers", "key", "model", "effort", "skills", "pageChars", "suggestOn", "memories", "memoryOn", "summarizePages", "chats", "seededSkills", "skillSources", "lang", "consent"]);
   setLangPref(saved.lang);
   await loadAllDicts(); // 舊版預設技能的跨語言改名比對（下面）要看得到全部字典
   S.consent = !!saved.consent; // 醒目揭露同意：舊使用者（已有 key）第一次開新版也要同意過才看得到 chat
@@ -582,12 +582,16 @@ export async function init() {
   S.skills = saved.skills ?? [];
   // 兩個都要跑：改完名的還要換內容
   const renamed = S.skills.filter((s) => [migrateName(s, S.skills), upgradeBody(s)].some(Boolean)).length;
+  // 技能開始記來源（skillSources）之前存的：沒改過的內建技能以外，一律標成來源不明的第三方（只做一次）
+  const untouched = (s: Skill) => DEFAULT_SKILLS.some((d) => d.name === s.name && Object.values(dictionaries).some((x) => x![`${d.prefix}.body` as Key] === s.body));
+  const marked = saved.skillSources ? [] : S.skills.filter((s) => !s.source && !untouched(s));
+  for (const s of marked) s.source = LEGACY_SOURCE;
   const seeded = ((saved.seededSkills ?? (saved.skills ? ["page-summary"] : [])) as string[]).map((x) => LEGACY_SEEDED[x] ?? x);
   const fresh = DEFAULT_SKILLS.filter((d) => !seeded.includes(d.id) && !S.skills.some((s) => knownNames(d).includes(s.name)));
   const ids = DEFAULT_SKILLS.map((d) => d.id);
-  if (renamed || fresh.length || JSON.stringify(saved.seededSkills) !== JSON.stringify(ids)) {
+  if (renamed || fresh.length || !saved.skillSources || JSON.stringify(saved.seededSkills) !== JSON.stringify(ids)) {
     S.skills.push(...fresh.map(defaultSkill));
-    await persist({ skills: S.skills, seededSkills: ids });
+    await persist({ skills: S.skills, seededSkills: ids, skillSources: 1 });
   }
 
   chrome.tabs.onActivated.addListener(() => { scheduleSuggestions(); refreshSelection(); });

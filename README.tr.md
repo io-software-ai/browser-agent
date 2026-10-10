@@ -47,7 +47,7 @@
 **Size ait, saklanır**
 - Hafıza: "şunu hatırla …" deyin, sohbetler arasında sizinle ilgili kısa bilgileri saklar. Ayarlar'da görüntüleyin, düzenleyin veya kapatın.
 - Geçmiş: son 30 konuşma, tarihe göre gruplanmış. Birini yeniden açıp devam edin veya Markdown olarak dışa aktarın.
-- 12 yerleşik beceri ve `/` komutları; kendinizinkini Claude Code ile aynı `SKILL.md` formatında yazın.
+- 12 yerleşik beceri ve `/` komutları; kendinizinkini yazın ya da GitHub, skills.sh veya ClawHub'dan [Agent Skills](https://agentskills.io/specification) (Claude Code'un kullandığı `SKILL.md` formatı) yükleyin.
 - 15 dilde arayüz; açık ve koyu tema sisteminizi takip eder.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Becerileri **Ayarlar → Beceriler**'de yönetin: oluşturun, düzenleyin, `.md` dosyaları içe aktarın, dışa aktarın. Claude Code'un `SKILL.md` dosyaları olduğu gibi içe aktarılır. İsteğe bağlı bir `model:` satırı (örneğin `model: haiku`), o beceriyi daha ucuz bir Claude modelinde çalıştırır.
+Becerileri **Ayarlar → Beceriler**'de yönetin: oluşturun, düzenleyin, dışa aktarın, bir `.md`, `.zip`/`.skill` dosyasını veya bütün bir beceri klasörünü içe aktarın ya da bir bağlantıdan yükleyin — `owner/repo/skill`, bir GitHub klasör bağlantısı, bir skills.sh sayfası veya onun `npx skills add …` komutu, bir ClawHub sayfası ya da bir `SKILL.md` veya zip dosyasına giden herhangi bir https bağlantısı. Beceriler [Agent Skills](https://agentskills.io/specification) standardını izler; bu, Claude Code ve diğer ajanların kullandığı `SKILL.md` biçimidir. Bir beceriyle birlikte gelen dosyalar (örneğin `references/forms.md`) saklanır ve model onları yalnızca talimatlar işaret ettiğinde okur; birlikte gelen betikler metin olarak tutulur ve asla çalıştırılmaz. İsteğe bağlı bir `model:` satırı (örneğin `model: haiku`), o beceriyi daha ucuz bir Claude modelinde çalıştırır; `disable-model-invocation: true` ve `user-invocable: false` Claude Code'daki gibi çalışır, `$ARGUMENTS` ise `/name` sonrasında yazdığınız metinle değiştirilir.
 
 Sistem prompt'una yalnızca isimler ve açıklamalar girer; model, ihtiyaç duyduğunda tam talimatları yüklemek için `use_skill`'i çağırır, `/isim` yazmak ise onları doğrudan ekler. Beceriler birer prompt'tur — içe aktarmadan önce okuyun.
 
@@ -205,7 +205,7 @@ Bir öneriye tıklamak onu hemen gönderir. Sayfadan üretilen öneriler sayfa i
 - Bankanız, e-postanız veya şirket yönetici panelinizle ilgili sekmeler açıkken güvenilmeyen sayfalarda araştırma yapmayın ya da görev çalıştırmayın ve bir görev çalışırken ajanı izleyin.
 - Riskli tıklamaları tespit etmek anahtar kelime ve form şekli sezgisine dayanır. Bazı düğmeleri kaçıracaktır.
 - Aynı sitedeki bir alana yazmak sormaz. Kötü niyetli bir sayfa, ajanın yazdıklarını okuyabilir (örneğin bir `input` dinleyicisiyle) ve kendi sunucusuna gönderebilir.
-- İçe aktarılan bir `SKILL.md`, güvenilir talimatlardır. Yalnızca okuduğunuz becerileri içe aktarın.
+- İçe aktarılan ve yüklenen beceriler üçüncü tarafların talimatlarıdır. Biri beceri listenizdeyken (veya onu `/name` ile çağırdığınızda) her görev güvenilmez sayılır: bir anı kaydetmek, ajanın oluşturduğu bir bağlantıyı açmak ya da sizin vermediğiniz bir metni yazmak önce sizden onay ister. Bu beceriler listede *Üçüncü taraf* etiketi taşır. Kendi yazdığınız beceriler güvenilir sayılır. Bu sürümden önce eklenen becerilerin kayıtlı bir kaynağı yoktur, bu yüzden onlar da üçüncü taraf sayılır; birini kendiniz yazdıysanız açın ve **Bunu kendim yazdım** seçeneğini seçin. Yalnızca güvendiğiniz kaynaklardan beceri yükleyin.
 - Hafızalar ve konuşmalar tarayıcınızda şifrelenmeden saklanır ve her istekle birlikte modele gönderilir (Browser Agent Cloud üzerinden veya kendi sağlayıcınıza).
 
 ## Diller

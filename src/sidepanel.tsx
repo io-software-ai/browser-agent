@@ -162,7 +162,7 @@ function Composer() {
     const m = v.match(/^\/(\S*)$/);
     if (!m) return setSlash(null);
     const q = m[1].toLowerCase();
-    const all: SlashItem[] = [...COMMANDS.map((c) => ({ name: c.name, description: t(c.descKey), run: c.run })), ...S.skills];
+    const all: SlashItem[] = [...COMMANDS.map((c) => ({ name: c.name, description: t(c.descKey), run: c.run })), ...S.skills.filter((s) => !s.hidden)]; // user-invocable: false 的技能只給模型用
     setSlash({ items: all.filter((s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)), index: 0 });
   };
   const pick = (s: SlashItem) => {

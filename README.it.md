@@ -47,7 +47,7 @@
 **Resta tuo**
 - Memoria: di' "ricorda …" e conserva brevi fatti su di te tra una chat e l'altra. Puoi vederla, modificarla o disattivarla nelle Impostazioni.
 - Cronologia: le ultime 30 conversazioni, raggruppate per data. Riaprine una e continua, oppure esportala in Markdown.
-- 12 skill integrate e comandi `/`; scrivi le tue con lo stesso formato `SKILL.md` di Claude Code.
+- 12 skill integrate e comandi `/`; scrivi le tue, oppure installa [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, il formato usato da Claude Code) da GitHub, skills.sh o ClawHub.
 - Interfaccia in 15 lingue; il tema chiaro e scuro segue quello del sistema.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Gestisci le skill in **Impostazioni → Skill**: crea, modifica, importa file `.md`, esporta. I file `SKILL.md` di Claude Code vengono importati così come sono. Una riga facoltativa `model:` (per esempio `model: haiku`) esegue quella skill su un modello Claude più economico.
+Gestisci le skill in **Impostazioni → Skill**: crea, modifica, esporta, importa un file `.md`, `.zip`/`.skill` o un'intera cartella di skill, oppure installa da un link — `owner/repo/skill`, un link a una cartella GitHub, una pagina di skills.sh o il suo comando `npx skills add …`, una pagina di ClawHub, o qualsiasi link https a un `SKILL.md` o a uno zip. Le skill seguono lo standard [Agent Skills](https://agentskills.io/specification), lo stesso formato `SKILL.md` usato da Claude Code e da altri agenti. I file inclusi in una skill (per esempio `references/forms.md`) vengono salvati e il modello li legge solo quando le istruzioni li richiamano; gli script inclusi sono conservati come testo e non vengono mai eseguiti. Una riga facoltativa `model:` (per esempio `model: haiku`) esegue quella skill su un modello Claude più economico; `disable-model-invocation: true` e `user-invocable: false` funzionano come in Claude Code, e `$ARGUMENTS` viene sostituito da ciò che digiti dopo `/name`.
 
 Solo nomi e descrizioni finiscono nel system prompt; il modello chiama `use_skill` per caricare le istruzioni complete quando servono, e digitare `/nome` le allega direttamente. Le skill sono prompt: leggila prima di importarla.
 
@@ -205,7 +205,7 @@ Cliccare un suggerimento lo invia subito. I suggerimenti generati dalla pagina v
 - Non fare ricerche né eseguire attività su pagine non attendibili mentre sono aperte schede della tua banca, della posta o dell'amministrazione aziendale, e tienilo d'occhio mentre un'attività è in corso.
 - Il rilevamento dei clic rischiosi è un'euristica basata su parole chiave e forma del modulo. Gli sfuggirà qualche pulsante.
 - Digitare in un campo dello stesso sito non chiede conferma. Una pagina malevola può leggere ciò che l'agente digita (per esempio con un listener `input`) e inviarlo al proprio server.
-- Un `SKILL.md` importato è un insieme di istruzioni considerate attendibili. Importa solo skill che hai letto.
+- Le skill importate e installate sono istruzioni di terze parti. Finché una è nella tua lista di skill (o la richiami con `/name`), ogni attività è considerata non attendibile: salvare un ricordo, aprire un link costruito dall'agente o digitare un testo che non hai fornito tu chiede prima conferma. Queste skill mostrano l'etichetta *Di terze parti* nell'elenco. Le skill che scrivi tu sono attendibili. Le skill aggiunte prima di questa versione non hanno un'origine registrata, quindi sono trattate anch'esse come di terze parti; se ne hai scritta una tu, aprila e scegli **L'ho scritta io**. Installa solo skill da fonti di cui ti fidi.
 - Ricordi e conversazioni sono memorizzati non cifrati nel tuo browser e inviati al modello a ogni richiesta (tramite Browser Agent Cloud, o al tuo provider).
 
 ## Lingue

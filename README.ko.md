@@ -47,7 +47,7 @@
 **내가 간직하는 것들**
 - 메모리: "기억해 줘……"라고 하면 대화가 바뀌어도 나에 관한 짧은 정보를 기억합니다. 설정에서 확인·편집하거나 끌 수 있습니다.
 - 기록: 최근 대화 30개를 날짜별로 묶어 보여 줍니다. 다시 열어 이어서 하거나 Markdown으로 내보낼 수 있습니다.
-- 내장 스킬 12개와 `/` 명령. Claude Code와 같은 `SKILL.md` 형식으로 직접 만들 수도 있습니다.
+- 내장 스킬 12개와 `/` 명령. 직접 만들거나, GitHub·skills.sh·ClawHub에서 [Agent Skills](https://agentskills.io/specification)(Claude Code가 쓰는 `SKILL.md` 형식)를 설치할 수 있습니다.
 - 15개 언어를 지원하는 인터페이스. 라이트·다크 테마는 시스템 설정을 따릅니다.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-스킬은 **설정 → 스킬**에서 관리합니다: 만들기, 편집, `.md` 파일 가져오기, 내보내기. Claude Code의 `SKILL.md` 파일은 그대로 가져올 수 있습니다. 선택 사항인 `model:` 줄(예: `model: haiku`)을 넣으면 해당 스킬을 더 저렴한 Claude 모델로 실행합니다.
+스킬은 **설정 → 스킬**에서 관리합니다: 만들기, 편집, 내보내기, `.md`·`.zip`/`.skill` 파일 또는 스킬 폴더 통째로 가져오기, 그리고 링크로 설치하기 — `owner/repo/skill`, GitHub 폴더 링크, skills.sh 페이지 또는 그 `npx skills add …` 명령, ClawHub 페이지, `SKILL.md`나 zip을 가리키는 모든 https 링크. 스킬은 [Agent Skills](https://agentskills.io/specification) 표준을 따르며, Claude Code와 다른 에이전트가 쓰는 것과 같은 `SKILL.md` 형식입니다. 스킬에 포함된 파일(예: `references/forms.md`)은 저장되며, 지침에서 가리킬 때만 모델이 읽습니다. 포함된 스크립트는 텍스트로만 보관되고 절대 실행되지 않습니다. 선택 사항인 `model:` 줄(예: `model: haiku`)을 넣으면 해당 스킬을 더 저렴한 Claude 모델로 실행합니다. `disable-model-invocation: true`와 `user-invocable: false`는 Claude Code와 같게 동작하고, `$ARGUMENTS`는 `/name` 뒤에 입력한 내용으로 바뀝니다.
 
 시스템 프롬프트에는 이름과 설명만 들어갑니다. 모델은 필요할 때 `use_skill`을 호출해 전체 지시 사항을 불러오고, `/이름`을 입력하면 곧바로 첨부됩니다. 스킬은 곧 프롬프트이므로, 가져오기 전에 내용을 읽어 보세요.
 
@@ -205,7 +205,7 @@ description: Turn a meeting page into decisions, action items and owners
 - 인터넷 뱅킹, 이메일, 회사 관리자 페이지가 열린 탭이 있는 동안에는 신뢰할 수 없는 페이지에서 조사나 작업을 하지 마세요. 작업이 진행되는 동안에는 지켜보세요.
 - 위험한 클릭의 감지는 키워드와 폼 형태에 기반한 휴리스틱입니다. 놓치는 버튼이 있습니다.
 - 같은 사이트의 입력란에 입력하는 것은 묻지 않습니다. 악의적인 페이지는 에이전트가 입력하는 내용을(예를 들어 `input` 리스너로) 읽어 자기 서버로 보낼 수 있습니다.
-- 가져온 `SKILL.md`는 신뢰하는 지시 사항으로 취급됩니다. 내용을 읽어 본 스킬만 가져오세요.
+- 가져오거나 설치한 스킬은 제3자의 지시 사항입니다. 스킬 목록에 있는 동안(또는 `/name`으로 호출하는 동안)에는 모든 작업이 신뢰할 수 없는 것으로 취급됩니다. 메모리 저장, 에이전트가 만든 링크 열기, 직접 주지 않은 텍스트 입력은 먼저 확인을 요청합니다. 이런 스킬은 목록에 '서드파티' 라벨이 표시됩니다. 직접 작성한 스킬은 신뢰하는 것으로 취급됩니다. 이 버전 이전에 추가한 스킬은 출처 기록이 없으므로 마찬가지로 서드파티로 취급됩니다. 직접 작성한 스킬이라면 열어서 **직접 작성했습니다**를 선택하세요. 신뢰하는 출처의 스킬만 설치하세요.
 - 메모리와 대화는 암호화되지 않은 채 브라우저에 저장되고, 요청할 때마다 모델로 함께 전송됩니다(Browser Agent Cloud를 거치거나 내 제공업체로).
 
 ## 지원 언어

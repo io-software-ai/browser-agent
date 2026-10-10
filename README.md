@@ -47,7 +47,7 @@ English · [繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md) ·
 **Yours to keep**
 - Memory: say "remember …" and it keeps short facts about you across chats. View, edit or turn it off in Settings.
 - History: the last 30 conversations, grouped by date. Reopen one and keep going, or export it as Markdown.
-- 12 built-in skills and `/` commands; write your own in the same `SKILL.md` format as Claude Code.
+- 12 built-in skills and `/` commands; write your own, or install [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, the format Claude Code uses) from GitHub, skills.sh or ClawHub.
 - Interface in 15 languages; light and dark theme follow your system.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Manage skills in **Settings → Skills**: create, edit, import `.md` files, export. Claude Code `SKILL.md` files import as-is. An optional `model:` line (for example `model: haiku`) runs that skill on a cheaper Claude model.
+Manage skills in **Settings → Skills**: create, edit, export, import a `.md`, `.zip`/`.skill` file or a whole skill folder, or install from a link — `owner/repo/skill`, a GitHub folder link, a skills.sh page or its `npx skills add …` command, a ClawHub page, or any https link to a `SKILL.md` or zip. Skills follow the [Agent Skills](https://agentskills.io/specification) standard, the same `SKILL.md` format Claude Code and other agents use. Files bundled with a skill (for example `references/forms.md`) are stored and read by the model only when the instructions point to them; bundled scripts are kept as text and never run. An optional `model:` line (for example `model: haiku`) runs that skill on a cheaper Claude model; `disable-model-invocation: true` and `user-invocable: false` work as in Claude Code, and `$ARGUMENTS` is replaced with what you type after `/name`.
 
 Only names and descriptions go into the system prompt; the model calls `use_skill` to load the full instructions when it needs them, and typing `/name` attaches them directly. Skills are prompts — read one before importing it.
 
@@ -205,7 +205,7 @@ Clicking a suggestion sends it right away. Suggestions generated from the page a
 - Don't research or run tasks on untrusted pages while tabs with your bank, email or company admin are open, and watch it while a task is running.
 - Detecting risky clicks is a keyword and form-shape heuristic. It will miss some buttons.
 - Typing into a field on the same site doesn't ask. A malicious page can read what the agent types (for example with an `input` listener) and send it to its own server.
-- An imported `SKILL.md` is trusted instructions. Only import skills you've read.
+- Imported and installed skills are third-party instructions. While one is in your skill list (or you call it with `/name`), every task counts as untrusted: saving a memory, opening a link the agent built, or typing text you didn't give asks first. These skills show a *Third-party* label in the list. Skills you write yourself are trusted. Skills added before this version have no recorded source, so they're treated as third-party too; if you wrote one yourself, open it and choose **I wrote this myself**. Only install skills from sources you trust.
 - Memories and conversations are stored unencrypted in your browser and sent with each request to the model (through Browser Agent Cloud, or to your own provider).
 
 ## Languages

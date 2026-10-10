@@ -3,6 +3,7 @@
 import { listElements, inspectTarget } from "./elements";
 import { addMemory, forgetMemory } from "./memory";
 import { checkFile } from "./files";
+import { skillResult } from "./skills";
 import { fetchPdf, openPdf, pdfText, isScanned, isPdfUrl, viewerFile, toBase64, PdfError, MAX_SCAN_PAGES, MAX_SCAN_BYTES } from "./pdf";
 import { S, emit, addItem, setMemories, type AskItem, type AskInput, type ConfirmItem, type NoteItem } from "./store";
 import type { Block } from "./history";
@@ -436,9 +437,11 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       return result;
     }
     case "use_skill": {
-      const skill = S.skills.find((s) => s.name === input.name);
-      if (!skill) throw new Error(`沒有名為「${input.name}」的技能，可用的有：${S.skills.map((s) => s.name).join("、") || "（無）"}`);
-      return skill.body;
+      const usable = S.skills.filter((s) => !s.manual); // disable-model-invocation 的只能由使用者 /名稱 叫出
+      const skill = usable.find((s) => s.name === input.name);
+      if (!skill) throw new Error(`沒有名為「${input.name}」的技能，可用的有：${usable.map((s) => s.name).join("、") || "（無）"}`);
+      if (skill.source) task.tainted = true; // 匯入／安裝的技能是第三方寫的指示，跟網頁內容一樣不可信
+      return skillResult(skill, input.file ? String(input.file) : undefined);
     }
     case "search_web":
       task.tainted = true;

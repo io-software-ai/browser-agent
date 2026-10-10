@@ -47,7 +47,7 @@
 **Tuyo para conservar**
 - Memoria: di "recuerda …" y guarda datos breves sobre ti entre chats. Consúltala, edítala o desactívala en Ajustes.
 - Historial: las últimas 30 conversaciones, agrupadas por fecha. Reabre una y sigue, o expórtala como Markdown.
-- 12 habilidades integradas y comandos `/`; escribe las tuyas con el mismo formato `SKILL.md` que Claude Code.
+- 12 habilidades integradas y comandos `/`; escribe las tuyas o instala [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, el formato que usa Claude Code) desde GitHub, skills.sh o ClawHub.
 - Interfaz en 15 idiomas; el tema claro u oscuro sigue el de tu sistema.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Gestiona las habilidades en **Ajustes → Habilidades**: crea, edita, importa archivos `.md`, exporta. Los archivos `SKILL.md` de Claude Code se importan tal cual. Una línea opcional `model:` (por ejemplo `model: haiku`) ejecuta esa habilidad en un modelo Claude más económico.
+Gestiona las habilidades en **Ajustes → Habilidades**: crea, edita, exporta, importa un archivo `.md`, `.zip`/`.skill` o una carpeta de habilidad completa, o instala desde un enlace: `owner/repo/skill`, un enlace a una carpeta de GitHub, una página de skills.sh o su comando `npx skills add …`, una página de ClawHub, o cualquier enlace https a un `SKILL.md` o a un zip. Las habilidades siguen el estándar [Agent Skills](https://agentskills.io/specification), el mismo formato `SKILL.md` que usan Claude Code y otros agentes. Los archivos incluidos con una habilidad (por ejemplo `references/forms.md`) se guardan y el modelo solo los lee cuando las instrucciones los mencionan; los scripts incluidos se conservan como texto y nunca se ejecutan. Una línea opcional `model:` (por ejemplo `model: haiku`) ejecuta esa habilidad en un modelo Claude más económico; `disable-model-invocation: true` y `user-invocable: false` funcionan igual que en Claude Code, y `$ARGUMENTS` se sustituye por lo que escribas después de `/name`.
 
 Solo los nombres y descripciones entran en el system prompt; el modelo llama a `use_skill` para cargar las instrucciones completas cuando las necesita, y escribir `/nombre` las adjunta directamente. Las habilidades son prompts: léela antes de importarla.
 
@@ -205,7 +205,7 @@ Hacer clic en una sugerencia la envía al instante. Las sugerencias generadas a 
 - No investigues ni ejecutes tareas en páginas no confiables mientras tengas abiertas pestañas de tu banco, correo o administración de empresa, y vigílalo mientras una tarea está en marcha.
 - Detectar clics arriesgados es una heurística de palabras clave y forma del formulario. Se le escaparán algunos botones.
 - Escribir en un campo del mismo sitio no pregunta. Una página maliciosa puede leer lo que escribe el agente (por ejemplo con un listener de `input`) y enviarlo a su propio servidor.
-- Un `SKILL.md` importado son instrucciones de confianza. Importa solo habilidades que hayas leído.
+- Las habilidades importadas e instaladas son instrucciones de terceros. Mientras una esté en tu lista de habilidades (o la llames con `/name`), toda tarea se considera no fiable: guardar un recuerdo, abrir un enlace que construyó el agente o escribir texto que no diste tú pregunta antes. Estas habilidades muestran una etiqueta *De terceros* en la lista. Las habilidades que escribes tú son de confianza. Las habilidades añadidas antes de esta versión no tienen un origen registrado, así que también se tratan como de terceros; si escribiste una tú mismo, ábrela y elige **Lo escribí yo**. Instala solo habilidades de fuentes en las que confíes.
 - Los recuerdos y conversaciones se guardan sin cifrar en tu navegador y se envían con cada petición al modelo (a través de Browser Agent Cloud, o a tu propio proveedor).
 
 ## Idiomas

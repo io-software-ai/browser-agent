@@ -30,7 +30,7 @@ Browser Agent 把 AI agent 放進你的瀏覽器，直接操作你正在看的�
 • 選取文字：在頁面上選一段，只針對那段發問
 • 讀 PDF，包含沒有文字層的掃描檔（以圖片送給 Claude，一定要你按允許才會送——見下方隱私）
 • 12 個內建技能，打 / 挑選：/summarize、/translate、/extract、/compare、/explain、/thread、/reply、/fill-form、/review-pr、/checklist、/decide、/grill-me
-• 用 Markdown 寫自己的技能（SKILL.md 可直接匯入）
+• 用 Markdown 寫自己的技能，或從 GitHub、skills.sh、ClawHub 安裝（Agent Skills 標準：SKILL.md、技能資料夾、.zip）；裝來的技能會標成第三方、當成不可信內容處理，技能附帶的程式不會執行
 • 選擇題卡片：需要你做決定時，用可點的選項問你
 • 檔案下載：結果可以存成 CSV、Markdown、JSON 等純文字檔
 • 記憶：說「記住……」，它會記得關於你的簡短事實；可以在設定裡查看、編輯或關閉

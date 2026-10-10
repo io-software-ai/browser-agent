@@ -47,7 +47,7 @@
 **留在你手里**
 - 记忆：说“记住……”，它会在不同对话之间记住关于你的简短事实。可以在设置里查看、编辑或关闭。
 - 历史：最近 30 个对话，按日期分组。可以打开后接着聊，或导出为 Markdown。
-- 12 个内置技能和 `/` 命令；也可以用与 Claude Code 相同的 `SKILL.md` 格式自己写。
+- 12 个内置技能和 `/` 命令；可以自己写，也可以从 GitHub、skills.sh 或 ClawHub 安装 [Agent Skills](https://agentskills.io/specification)（Claude Code 使用的 `SKILL.md` 格式）。
 - 界面支持 15 种语言；浅色和深色主题跟随系统。
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-在**设置 → 技能**里管理技能：新建、编辑、导入 `.md` 文件、导出。Claude Code 的 `SKILL.md` 文件可以直接导入。可选的 `model:` 一行（例如 `model: haiku`）可以让这个技能改用更便宜的 Claude 模型运行。
+在**设置 → 技能**里管理技能：新建、编辑、导出、导入 `.md`、`.zip`/`.skill` 文件或整个技能文件夹，也可以通过链接安装——`owner/repo/skill`、GitHub 文件夹链接、skills.sh 页面或其 `npx skills add …` 命令、ClawHub 页面，或任何指向 `SKILL.md` 或 zip 的 https 链接。技能遵循 [Agent Skills](https://agentskills.io/specification) 标准，即 Claude Code 和其他智能体使用的同一种 `SKILL.md` 格式。随技能附带的文件（例如 `references/forms.md`）会被保存，模型只在指令提到它们时才会读取；附带的脚本只会当作文本保存，绝不会被执行。可选的 `model:` 一行（例如 `model: haiku`）可以让这个技能改用更便宜的 Claude 模型运行；`disable-model-invocation: true` 和 `user-invocable: false` 的作用与 Claude Code 相同，`$ARGUMENTS` 会被替换成你在 `/name` 后面输入的内容。
 
 系统提示词里只放名称和说明；模型需要时会调用 `use_skill` 加载完整指令，你输入 `/名称` 则会直接附上。技能就是提示词——导入前请先读一遍。
 
@@ -205,7 +205,7 @@ description: Turn a meeting page into decisions, action items and owners
 - 开着网银、邮箱或公司管理后台的标签页时，不要在不可信的页面上做研究或执行任务；任务进行期间请留意它在做什么。
 - 识别高风险点击靠的是关键词和表单形态的启发式规则，一定会漏掉一些按钮。
 - 在同一个网站内向输入框输入文字不会询问。恶意页面可以读到 agent 输入的内容（例如通过 `input` 监听器），再发到它自己的服务器。
-- 导入的 `SKILL.md` 会被当作可信指令。只导入你读过的技能。
+- 导入和安装的技能是第三方指令。只要其中一个在你的技能列表里（或你用 `/name` 调用它），每个任务都会被视为不可信：保存记忆、打开智能体自己拼出的链接、输入不是你给出的文字，都会先询问你。这些技能在列表中会显示「第三方」标签。你自己写的技能视为可信。在此版本之前添加的技能没有来源记录，所以同样视为第三方；如果是你自己写的，请打开它并选择**这是我自己写的**。只安装来自你信任来源的技能。
 - 记忆和对话以未加密的形式保存在你的浏览器里，并随每次请求一起发给模型（经过 Browser Agent Cloud，或发给你自己的服务商）。
 
 ## 界面语言

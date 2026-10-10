@@ -47,7 +47,7 @@
 **Bleibt bei Ihnen**
 - Gedächtnis: Sagen Sie „merke dir …“, und er behält kurze Fakten über Sie über Chats hinweg. Ansehen, bearbeiten oder abschalten können Sie es in den Einstellungen.
 - Verlauf: die letzten 30 Unterhaltungen, nach Datum gruppiert. Öffnen Sie eine erneut und machen Sie weiter, oder exportieren Sie sie als Markdown.
-- 12 integrierte Skills und `/`-Befehle; eigene schreiben Sie im selben `SKILL.md`-Format wie Claude Code.
+- 12 integrierte Skills und `/`-Befehle; schreiben Sie eigene oder installieren Sie [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, das Format von Claude Code) von GitHub, skills.sh oder ClawHub.
 - Oberfläche in 15 Sprachen; helles und dunkles Design folgen Ihrem System.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Skills verwalten Sie unter **Einstellungen → Skills**: erstellen, bearbeiten, `.md`-Dateien importieren, exportieren. Claude-Code-`SKILL.md`-Dateien werden unverändert importiert. Eine optionale Zeile `model:` (zum Beispiel `model: haiku`) führt diesen Skill mit einem günstigeren Claude-Modell aus.
+Skills verwalten Sie unter **Einstellungen → Skills**: erstellen, bearbeiten, exportieren, eine `.md`-, `.zip`-/`.skill`-Datei oder einen ganzen Skill-Ordner importieren oder per Link installieren — `owner/repo/skill`, ein GitHub-Ordnerlink, eine skills.sh-Seite oder deren Befehl `npx skills add …`, eine ClawHub-Seite oder ein beliebiger https-Link auf eine `SKILL.md` oder ein Zip. Skills folgen dem Standard [Agent Skills](https://agentskills.io/specification), demselben `SKILL.md`-Format, das Claude Code und andere Agenten verwenden. Dateien, die einem Skill beiliegen (zum Beispiel `references/forms.md`), werden gespeichert und vom Modell nur gelesen, wenn die Anweisungen darauf verweisen; beigelegte Skripte werden als Text aufbewahrt und nie ausgeführt. Eine optionale Zeile `model:` (zum Beispiel `model: haiku`) führt diesen Skill mit einem günstigeren Claude-Modell aus; `disable-model-invocation: true` und `user-invocable: false` funktionieren wie in Claude Code, und `$ARGUMENTS` wird durch das ersetzt, was Sie nach `/name` eintippen.
 
 Nur Namen und Beschreibungen gelangen in den System-Prompt; das Modell ruft `use_skill` auf, um die vollständigen Anweisungen bei Bedarf zu laden, und die Eingabe von `/name` hängt sie direkt an. Skills sind Prompts – lesen Sie einen, bevor Sie ihn importieren.
 
@@ -205,7 +205,7 @@ Ein Klick auf einen Vorschlag sendet ihn sofort. Aus der Seite erzeugte Vorschl�
 - Recherchieren Sie nicht und führen Sie keine Aufgaben auf nicht vertrauenswürdigen Seiten aus, solange Tabs mit Ihrer Bank, Ihrem E-Mail-Postfach oder der Firmenverwaltung geöffnet sind, und behalten Sie ihn im Auge, solange eine Aufgabe läuft.
 - Die Erkennung riskanter Klicks ist eine Heuristik aus Schlüsselwörtern und Formularform. Manche Schaltflächen entgehen ihr.
 - Tippen in ein Feld auf derselben Website löst keine Nachfrage aus. Eine bösartige Seite kann mitlesen, was der Agent tippt (zum Beispiel mit einem `input`-Listener), und es an ihren eigenen Server senden.
-- Eine importierte `SKILL.md` besteht aus vertrauenswürdigen Anweisungen. Importieren Sie nur Skills, die Sie gelesen haben.
+- Importierte und installierte Skills sind Anweisungen von Dritten. Solange einer in Ihrer Skill-Liste steht (oder Sie ihn mit `/name` aufrufen), gilt jede Aufgabe als nicht vertrauenswürdig: Eine Erinnerung zu speichern, einen vom Agenten zusammengebauten Link zu öffnen oder Text einzutippen, den Sie nicht vorgegeben haben, fragt zuerst nach. Diese Skills tragen in der Liste das Label *Drittanbieter*. Selbst geschriebene Skills sind vertrauenswürdig. Skills, die vor dieser Version hinzugefügt wurden, haben keine gespeicherte Quelle und gelten daher ebenfalls als Drittanbieter; wenn Sie einen selbst geschrieben haben, öffnen Sie ihn und wählen Sie **Das habe ich selbst geschrieben**. Installieren Sie nur Skills aus Quellen, denen Sie vertrauen.
 - Erinnerungen und Unterhaltungen werden unverschlüsselt in Ihrem Browser gespeichert und mit jeder Anfrage an das Modell gesendet (über Browser Agent Cloud oder an Ihren eigenen Anbieter).
 
 ## Sprachen

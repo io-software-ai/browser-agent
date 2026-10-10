@@ -47,7 +47,7 @@
 **Thuộc về bạn**
 - Bộ nhớ: nói "hãy nhớ …" và nó sẽ giữ những thông tin ngắn về bạn qua các cuộc trò chuyện. Xem, sửa hoặc tắt trong Cài đặt.
 - Lịch sử: 30 cuộc trò chuyện gần nhất, nhóm theo ngày. Mở lại một cuộc để tiếp tục, hoặc xuất ra Markdown.
-- 12 kỹ năng tích hợp và lệnh `/`; bạn có thể tự viết theo cùng định dạng `SKILL.md` như Claude Code.
+- 12 kỹ năng tích hợp và lệnh `/`; bạn có thể tự viết, hoặc cài [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, định dạng Claude Code dùng) từ GitHub, skills.sh hoặc ClawHub.
 - Giao diện có 15 ngôn ngữ; giao diện sáng và tối theo hệ thống của bạn.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Quản lý kỹ năng trong **Cài đặt → Kỹ năng**: tạo, sửa, nhập tệp `.md`, xuất. Tệp `SKILL.md` của Claude Code nhập vào được nguyên trạng. Một dòng `model:` tùy chọn (ví dụ `model: haiku`) sẽ chạy kỹ năng đó trên một mô hình Claude rẻ hơn.
+Quản lý kỹ năng trong **Cài đặt → Kỹ năng**: tạo, sửa, xuất, nhập tệp `.md`, `.zip`/`.skill` hoặc cả thư mục kỹ năng, hoặc cài từ một liên kết — `owner/repo/skill`, liên kết thư mục GitHub, trang skills.sh hoặc lệnh `npx skills add …` của trang đó, trang ClawHub, hay bất kỳ liên kết https nào tới `SKILL.md` hoặc tệp zip. Kỹ năng tuân theo chuẩn [Agent Skills](https://agentskills.io/specification), cùng định dạng `SKILL.md` mà Claude Code và các agent khác dùng. Các tệp đi kèm kỹ năng (ví dụ `references/forms.md`) được lưu lại và mô hình chỉ đọc khi chỉ dẫn nhắc tới; các script đi kèm được giữ dưới dạng văn bản và không bao giờ được chạy. Một dòng `model:` tùy chọn (ví dụ `model: haiku`) sẽ chạy kỹ năng đó trên một mô hình Claude rẻ hơn; `disable-model-invocation: true` và `user-invocable: false` hoạt động như trong Claude Code, còn `$ARGUMENTS` được thay bằng nội dung bạn gõ sau `/name`.
 
 Chỉ tên và mô tả được đưa vào system prompt; mô hình gọi `use_skill` để nạp đầy đủ chỉ dẫn khi cần, còn khi bạn gõ `/tên` thì chỉ dẫn được đính kèm trực tiếp. Kỹ năng chính là prompt — hãy đọc trước khi nhập.
 
@@ -205,7 +205,7 @@ Bấm vào một gợi ý sẽ gửi ngay. Các gợi ý được tạo từ tra
 - Đừng nghiên cứu hay chạy tác vụ trên các trang không đáng tin khi các tab ngân hàng, email hoặc trang quản trị công ty của bạn đang mở, và hãy theo dõi nó khi một tác vụ đang chạy.
 - Việc phát hiện cú bấm rủi ro là một phương pháp heuristic dựa trên từ khóa và hình dạng biểu mẫu. Nó sẽ bỏ sót một số nút.
 - Nhập văn bản vào một ô trên cùng trang web sẽ không hỏi. Một trang độc hại có thể đọc những gì agent nhập (ví dụ bằng trình lắng nghe `input`) và gửi về máy chủ của nó.
-- `SKILL.md` đã nhập được coi là chỉ dẫn đáng tin. Chỉ nhập những kỹ năng bạn đã đọc.
+- Kỹ năng đã nhập và đã cài là chỉ dẫn của bên thứ ba. Khi một kỹ năng nằm trong danh sách kỹ năng của bạn (hoặc bạn gọi nó bằng `/name`), mọi tác vụ đều được coi là không đáng tin: lưu một ký ức, mở liên kết do agent tự dựng, hoặc gõ văn bản không phải do bạn đưa ra sẽ hỏi bạn trước. Những kỹ năng này hiện nhãn *Bên thứ ba* trong danh sách. Kỹ năng do chính bạn viết được coi là đáng tin. Kỹ năng được thêm trước phiên bản này không có nguồn được ghi lại, nên cũng được coi là của bên thứ ba; nếu bạn tự viết, hãy mở nó và chọn **Tôi tự viết**. Chỉ cài kỹ năng từ nguồn bạn tin cậy.
 - Bộ nhớ và cuộc trò chuyện được lưu không mã hóa trong trình duyệt của bạn và được gửi kèm mỗi yêu cầu đến mô hình (qua Browser Agent Cloud, hoặc đến nhà cung cấp của riêng bạn).
 
 ## Ngôn ngữ

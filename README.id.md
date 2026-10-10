@@ -47,7 +47,7 @@
 **Milik Anda untuk disimpan**
 - Memori: katakan "ingat …" dan ia akan menyimpan fakta singkat tentang Anda lintas percakapan. Lihat, edit, atau matikan di Pengaturan.
 - Riwayat: 30 percakapan terakhir, dikelompokkan berdasarkan tanggal. Buka kembali dan lanjutkan, atau ekspor sebagai Markdown.
-- 12 skill bawaan dan perintah `/`; tulis skill Anda sendiri dengan format `SKILL.md` yang sama seperti Claude Code.
+- 12 skill bawaan dan perintah `/`; tulis skill Anda sendiri, atau instal [Agent Skills](https://agentskills.io/specification) (`SKILL.md`, format yang dipakai Claude Code) dari GitHub, skills.sh, atau ClawHub.
 - Antarmuka dalam 15 bahasa; tema terang dan gelap mengikuti sistem Anda.
 
 <table>
@@ -171,7 +171,7 @@ description: Turn a meeting page into decisions, action items and owners
 2. List decisions, then a table of action items with owner and due date.
 ```
 
-Kelola skill di **Pengaturan → Skill**: buat, edit, impor file `.md`, ekspor. File `SKILL.md` dari Claude Code diimpor apa adanya. Baris opsional `model:` (misalnya `model: haiku`) menjalankan skill tersebut dengan model Claude yang lebih murah.
+Kelola skill di **Pengaturan → Skill**: buat, edit, ekspor, impor file `.md`, `.zip`/`.skill` atau seluruh folder skill, atau instal dari tautan — `owner/repo/skill`, tautan folder GitHub, halaman skills.sh atau perintah `npx skills add …`-nya, halaman ClawHub, atau tautan https apa pun ke `SKILL.md` atau zip. Skill mengikuti standar [Agent Skills](https://agentskills.io/specification), format `SKILL.md` yang sama dengan yang dipakai Claude Code dan agen lain. File yang disertakan dalam skill (misalnya `references/forms.md`) disimpan dan hanya dibaca model bila instruksi menunjuk ke file tersebut; skrip yang disertakan disimpan sebagai teks dan tidak pernah dijalankan. Baris opsional `model:` (misalnya `model: haiku`) menjalankan skill tersebut dengan model Claude yang lebih murah; `disable-model-invocation: true` dan `user-invocable: false` bekerja seperti di Claude Code, dan `$ARGUMENTS` diganti dengan teks yang Anda ketik setelah `/name`.
 
 Hanya nama dan deskripsi yang masuk ke system prompt; model memanggil `use_skill` untuk memuat instruksi lengkap saat diperlukan, dan mengetik `/nama` langsung melampirkannya. Skill adalah prompt — bacalah sebelum mengimpornya.
 
@@ -205,7 +205,7 @@ Mengklik saran akan langsung mengirimkannya. Saran yang dihasilkan dari halaman 
 - Jangan meriset atau menjalankan tugas di halaman yang tidak tepercaya saat tab bank, email, atau admin perusahaan Anda sedang terbuka, dan awasi agen saat tugas berjalan.
 - Deteksi klik berisiko adalah heuristik kata kunci dan bentuk formulir. Ia akan melewatkan beberapa tombol.
 - Mengetik di kolom pada situs yang sama tidak akan bertanya. Halaman berbahaya bisa membaca apa yang diketik agen (misalnya dengan listener `input`) dan mengirimkannya ke servernya sendiri.
-- `SKILL.md` yang diimpor adalah instruksi yang dipercaya. Hanya impor skill yang sudah Anda baca.
+- Skill yang diimpor dan diinstal adalah instruksi pihak ketiga. Selama salah satunya ada di daftar skill Anda (atau Anda memanggilnya dengan `/name`), setiap tugas dianggap tidak tepercaya: menyimpan memori, membuka tautan yang disusun agen, atau mengetik teks yang tidak Anda berikan akan bertanya dulu. Skill ini menampilkan label *Pihak ketiga* di daftar. Skill yang Anda tulis sendiri dianggap tepercaya. Skill yang ditambahkan sebelum versi ini tidak punya catatan sumber, jadi juga diperlakukan sebagai pihak ketiga; jika Anda menulisnya sendiri, buka skill itu dan pilih **Saya menulis ini sendiri**. Instal skill hanya dari sumber yang Anda percaya.
 - Memori dan percakapan disimpan tanpa enkripsi di browser Anda dan dikirim ke model pada setiap permintaan (lewat Browser Agent Cloud, atau ke penyedia Anda sendiri).
 
 ## Bahasa

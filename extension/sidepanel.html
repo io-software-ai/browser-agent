@@ -404,6 +404,32 @@
   .nav-row svg { color: var(--faint); }
   .row-text { flex: 1 1 10em; min-width: 0; }
   .row-text small { display: block; color: var(--faint); font-size: 12px; line-height: 1.45; margin-top: 1px; }
+  .btn-sm { height: 30px; padding: 0 12px; font-size: 12.5px; }
+  /* 帳號區：身分列（頭像＋名稱＋說明，未登入時下面是兩個登入按鈕）在上，方案列（方案＋升級、用量條、用量與重置日）在下 */
+  .list-row.account-id, .list-row.account-plan { display: grid; align-items: stretch; padding: 14px; }
+  .list-row.account-id { gap: 14px; }
+  .list-row.account-plan { gap: 10px; }
+  .id-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .id-head .row-text strong { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .id-head .btn { flex: none; }
+  .avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+  .avatar svg { width: 18px; height: 18px; }
+  .avatar-letter { background: var(--accent-soft); color: var(--accent); font-size: 15px; font-weight: 600; }
+  .sso { display: grid; gap: 8px; }
+  /* Google 登入按鈕規範（developers.google.com/identity/branding-guidelines，2026-10-08 查）：淺色底 #fff、框 #747775、字 #1f1f1f；
+     深色底 #131314、框 #8e918f、字 #e3e3e3；左右留 12px、標誌到字 10px；G 只能用原色。GitHub 用同一款：兩個登入方式要一樣醒目 */
+  .sso-btn { width: 100%; height: 40px; padding: 0 12px; gap: 10px; font-size: 14px; background: #fff; border-color: #747775; color: #1f1f1f; }
+  .sso-btn:hover:not(:disabled) { background: #f4f4f5; }
+  .sso-btn svg { width: 18px; height: 18px; flex: none; }
+  .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .plan-head strong { font-weight: 600; }
+  .account-plan .meter { height: 6px; margin: 2px 0 0; }
+  .plan-meta { display: flex; justify-content: space-between; gap: 8px; }
+  .plan-meta small { color: var(--faint); font-size: 12px; }
+  @media (prefers-color-scheme: dark) {
+    .sso-btn { background: #131314; border-color: #8e918f; color: #e3e3e3; }
+    .sso-btn:hover:not(:disabled) { background: #1f1f21; }
+  }
   .skill-row .row-text strong { display: block; font: 500 12.5px ui-monospace, "SF Mono", Menlo, monospace; }
   .skill-row .row-text small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .switch {
@@ -425,6 +451,48 @@
   .memory-row .icon-btn svg { width: 12px; height: 12px; }
   .memory-row .icon-btn:hover { color: var(--err); }
   .skill-empty { color: var(--faint); font-size: 12px; }
+
+  /* 技能頁：新增卡片（貼連結安裝是主要動作，其他來源降成文字按鈕）、安裝前預覽、分組清單 */
+  .add-card { gap: 12px; padding: 14px; }
+  .add-head { display: grid; gap: 2px; }
+  .add-head strong { font-size: 13.5px; font-weight: 600; }
+  .add-head small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  /* .page form 的 padding: 0 權重比較高：這裡用 form.input-group 蓋回來 */
+  form.input-group, .input-group { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 5px 0 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line-strong); color: var(--faint); transition: border-color .15s, box-shadow .15s; }
+  .input-group:focus-within { border-color: var(--accent); box-shadow: var(--ring); background: var(--surface); }
+  .input-group > svg { width: 15px; height: 15px; flex: none; }
+  .input-group input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; color: var(--fg); font-size: 13px; }
+  .input-group input:focus-visible { box-shadow: none; }
+  .input-group .btn { flex: none; height: 32px; padding: 0 14px; border-radius: 7px; font-size: 12.5px; }
+  .input-group .btn:disabled { opacity: 1; background: var(--line); color: var(--faint); } /* 還沒貼連結：中性灰，不是半透明的主色 */
+  .add-card .form-error { margin-top: -6px; }
+  .add-card .notice { margin-top: -2px; }
+  .source-links { display: flex; flex-wrap: wrap; gap: 2px; margin: -2px -6px -4px; }
+  .text-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 500; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .text-btn:hover { background: var(--surface-2); color: var(--fg); }
+  .text-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+  .text-btn svg { width: 14px; height: 14px; flex: none; }
+  .preview-card { gap: 12px; padding: 14px; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .preview-list { display: grid; }
+  .preview-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; }
+  .preview-item:first-child { padding-top: 2px; }
+  .preview-item + .preview-item { border-top: 1px solid var(--line); }
+  label.preview-item { cursor: pointer; }
+  .preview-item input { flex: none; margin: 2px 0 0; width: 15px; height: 15px; accent-color: var(--accent); }
+  .preview-item strong { display: block; font: 500 12.5px ui-monospace, "SF Mono", Menlo, monospace; }
+  .preview-item small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .preview-meta { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 5px; color: var(--faint); font-size: 11.5px; }
+  .preview-source { min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; }
+  .preview-skipped { color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
+  .preview-skipped summary { cursor: pointer; width: fit-content; }
+  .preview-warn { margin: 0; padding: 9px 11px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .badge.warn { background: var(--err-soft); color: var(--err); }
+  .skill-group { display: grid; gap: 4px; }
+  .group-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
+  .group-head .group-title { margin: 0; }
+  .group-head .text-btn { margin-right: -2px; }
+  .skill-group .skill-empty { padding: 0 8px; }
+  .group-count { margin-left: 6px; color: var(--faint); font-weight: 500; }
 
   /* 技能編輯 */
   #skill-form { display: flex; flex-direction: column; gap: 14px; }

@@ -81,8 +81,8 @@ export const tools: BetaTool[] = [
   },
   {
     name: "use_skill",
-    description: "載入某個技能的完整指示。系統提示詞的「可用技能」清單裡有適合這次任務的技能時，先呼叫它再照指示做。",
-    input_schema: { type: "object", properties: { name: { type: "string", description: "技能名稱" } }, required: ["name"] },
+    description: "載入某個技能的完整指示。系統提示詞的「可用技能」清單裡有適合這次任務的技能時，先呼叫它再照指示做。技能指示裡提到它附帶的檔案（例如 references/forms.md）時，再帶 file 讀那個檔。",
+    input_schema: { type: "object", properties: { name: { type: "string", description: "技能名稱" }, file: { type: "string", description: "選填：技能附帶的檔案路徑（相對技能資料夾），不給就是載入技能本身" } }, required: ["name"] },
   },
   {
     name: "remember",
