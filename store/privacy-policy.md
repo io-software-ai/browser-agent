@@ -17,6 +17,7 @@ Stored only in your browser, in `chrome.storage.local`:
 - **Skills** (including the text files bundled with skills you import or install) **and settings** (model, language, theme, etc.)
 - **Your API key(s)** and endpoint addresses, if you use your own key
 - **A device token**: a random code that identifies this installation to Browser Agent Cloud
+- **GitHub access**, if you link a project to a GitHub repo: which repo and branch each project uses, a GitHub refresh token, and your GitHub username. The short-lived GitHub access token is kept in session storage and cleared when you close the browser
 
 You can delete conversations, memories, project files and projects in the extension at any time. Removing the extension deletes all of it from your computer.
 
@@ -32,6 +33,7 @@ In either mode, a request can contain:
 - When researching: search results (titles, addresses and snippets) and summaries or text of the pages it read (see *Research* below)
 - Your saved memories and the names and descriptions of your skills
 - If the chat is in a project: the project's name, instructions and memories, and the names of its files. The text of a project file is sent only when the assistant opens that file for your request
+- If the project is linked to a GitHub repo: the repo's name and branch, and the file names and contents the assistant lists or reads for your request. The repo's `CLAUDE.md`, `AGENTS.md` and memory file (`.browser-agent/memory.md`; the memory file only while memory is turned on) are sent with every request, regardless of whether the repo is private or who else has access to it
 
 Page content is read and sent only when you ask the assistant to do something, except for home suggestions (below).
 
@@ -73,6 +75,15 @@ When answering needs pages other than the one you're on, the assistant uses your
 ## Installing skills
 
 When you install a skill from a link in Settings → Skills, the extension downloads it directly from your browser: from GitHub (`api.github.com` and `raw.githubusercontent.com`) for GitHub and skills.sh links, from `clawhub.ai` for ClawHub links, or from the https address you entered. Those sites receive a normal download request, including your IP address, but no cookies and nothing from your conversations, memories or other skills. Nothing is downloaded until you click Install, and each skill's name, source and description are shown to you before it is added. Skills you import from your own files are read locally and not sent anywhere. Scripts bundled with a skill are stored as text and never run.
+
+## GitHub (projects linked to a repo)
+
+When you link a project to a GitHub repo, the extension talks to GitHub (`github.com` and `api.github.com`) directly from your browser. That connection never goes through Browser Agent's servers, in either mode. The repo content the assistant reads is sent to the AI model like the rest of a request (see *What a request to the AI model contains*).
+
+- **What it can access:** you sign in with GitHub and install the Browser Agent GitHub App on the repos you choose. It can read and write the file contents of those repos and nothing else (no issues, pull requests, workflows or settings).
+- **What it writes:** only files you approve on a confirmation card in the side panel, one at a time, plus the project's memory file (`.browser-agent/memory.md`) when the assistant remembers or forgets something, which also needs your approval on a card every time. Each write is a commit made with your GitHub account. Memory commits always have the message `Browser Agent: update memory`, so the memory text doesn't appear in the commit list, and they add or remove only that one line. The assistant can't write files that instruct AI agents (`CLAUDE.md`, `AGENTS.md`, `AGENT.md`, `GEMINI.md`, `opencode.json` and the like, at any level). Of the files and folders whose names start with a dot, at any level, it can write only a short allowlist of common ones (such as `.gitignore`, `.editorconfig`, lint and formatter settings, `.nvmrc`, `.env.example`, `.changeset/`, `.vitepress/` and `.storybook/`); everything else, including `.github/`, `.npmrc`, `.husky/`, `.devcontainer.json` and the settings of AI agents and editors, is off limits. The memory file is changed only by remembering and forgetting.
+- **Disconnecting:** Settings → GitHub → Disconnect deletes the tokens from your computer and revokes them at GitHub. If GitHub doesn't confirm the revocation, you're told, and you can revoke the app's authorization yourself in GitHub Settings → Applications. You can also remove the app from your GitHub settings at any time. If the authorization expires or is revoked, the project page and Settings let you reconnect.
+- **App credentials:** the GitHub App's client secret is built into the extension, as GitHub expects for apps that run on your device. Someone who extracts it can't use it to get access to your repos; the most they could do is revoke tokens the app has issued, which would make you sign in again.
 
 ## Home suggestions
 
@@ -122,6 +133,7 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 - **技能**（包含你匯入或安裝的技能附帶的文字檔）與設定（模型、語言、主題等）
 - **你的 API 金鑰**與端點網址（如果你用自己的金鑰）
 - **裝置代碼**：一組隨機代碼，讓 Browser Agent Cloud 認得這個安裝
+- **GitHub 授權**（如果你把專案連結到 GitHub repo）：每個專案用的 repo 與分支、GitHub 的 refresh token，以及你的 GitHub 使用者名稱。短效的 GitHub access token 放在工作階段儲存區，關掉瀏覽器就會清掉
 
 你隨時可以在擴充功能裡刪除對話、記憶、專案檔案與專案；移除擴充功能就會把這些資料從你的電腦上全部刪除。
 
@@ -137,6 +149,7 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 - 研究時：搜尋結果（標題、網址、摘要），以及讀過頁面的整理或原文（見下方「研究」）
 - 你存的記憶，以及技能的名稱與說明
 - 對話在專案裡時：專案的名稱、指示、記憶，以及檔案的名稱。專案檔案的內容只有在助理為了你的要求打開那個檔案時才會送出
+- 專案連結了 GitHub repo 時：repo 的名稱與分支，以及助理為了你的要求列出或讀取的檔名與內容。repo 的 `CLAUDE.md`、`AGENTS.md` 和記憶檔（`.browser-agent/memory.md`；記憶檔只有在記憶開啟時）會隨每次請求送出，不論 repo 是不是私人的、還有誰能存取它
 
 除了首頁建議（見下方），只有在你要求助理做事時，才會讀取並送出頁面內容。
 
@@ -178,6 +191,15 @@ Browser Agent 是開放原始碼（MIT 授權）的 Chrome 擴充功能：放進
 ## 安裝技能
 
 在 設定 → 技能 從連結安裝技能時，擴充功能會從你的瀏覽器直接下載：GitHub 與 skills.sh 的連結從 GitHub（`api.github.com` 與 `raw.githubusercontent.com`）下載，ClawHub 的連結從 `clawhub.ai` 下載，其他則從你輸入的 https 網址下載。這些網站收到的是一般的下載請求，包含你的 IP 位址，但不帶 cookie，也不包含你的對話、記憶或其他技能。你按下「安裝」之前不會下載任何東西，每個技能加入前都會先顯示名稱、來源與說明讓你確認。從你自己的檔案匯入的技能只在本機讀取，不會送到任何地方。技能附帶的程式只存成文字，永遠不會執行。
+
+## GitHub（連結 repo 的專案）
+
+把專案連結到 GitHub repo 時，擴充功能會從你的瀏覽器直接連到 GitHub（`github.com` 與 `api.github.com`）。不論哪一種用法，這條連線都不會經過 Browser Agent 的伺服器。助理讀到的 repo 內容，會跟請求的其他部分一樣送給 AI 模型（見「送給 AI 模型的請求包含什麼」）。
+
+- **能存取什麼：** 你用 GitHub 登入，並把 Browser Agent 的 GitHub App 安裝到你選的 repo。它只能讀寫那些 repo 的檔案內容，其他一律不行（issue、pull request、workflow、設定都碰不到）。
+- **會寫什麼：** 只寫你在側邊欄確認卡上一個一個允許的檔案，以及助理記住或忘記事情時，專案的記憶檔（`.browser-agent/memory.md`）——這種寫入每一次也都要你在確認卡上允許。每次寫入都是用你的 GitHub 帳號做的 commit。記憶的 commit 訊息固定是 `Browser Agent: update memory`，所以記憶的內容不會出現在 commit 列表裡，而且只會加上或刪掉那一行。助理不能寫給 AI agent 的指示檔（任何一層的 `CLAUDE.md`、`AGENTS.md`、`AGENT.md`、`GEMINI.md`、`opencode.json` 這類）。點開頭的檔案與資料夾（任何一層），助理只能寫白名單裡常見的幾種（例如 `.gitignore`、`.editorconfig`、lint／格式化設定、`.nvmrc`、`.env.example`、`.changeset/`、`.vitepress/`、`.storybook/`），其他的一律不能寫，包括 `.github/`、`.npmrc`、`.husky/`、`.devcontainer.json`，以及各種 AI agent 與編輯器的設定。記憶檔只能透過記住與忘記修改。
+- **中斷連結：** 設定 → GitHub → 中斷連結，會把 token 從你的電腦清掉，並在 GitHub 那邊撤銷。如果 GitHub 沒有確認撤銷成功，會提示你，你可以自己到 GitHub 的 Settings → Applications 撤銷這個 App 的授權。你也可以隨時在 GitHub 的設定裡移除這個 App。授權過期或被撤銷時，專案頁與設定頁會讓你重新連結。
+- **App 的憑證：** GitHub App 的 client secret 內建在擴充功能裡，這是 GitHub 對「在使用者裝置上執行的 App」的預期做法。有人把它拆出來也不能拿來存取你的 repo；最多只能撤銷這個 App 發出的 token，讓你需要重新登入。
 
 ## 首頁建議
 

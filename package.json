@@ -7,7 +7,7 @@
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "check": "esbuild scripts/check.mjs --bundle --platform=node --format=esm --log-level=warning --outfile=dist/check.mjs && node dist/check.mjs",
-    "test:e2e": "rm -rf dist/e2e-ext && mkdir -p dist/e2e-ext && cp -R extension/manifest.json extension/sidepanel.html extension/viewer.html extension/icons extension/_locales dist/e2e-ext/ && BA_OUTDIR=dist/e2e-ext BA_BACKEND=http://127.0.0.1:${E2E_PORT:-9394} BA_SEARCH=http://www.google.test/search?q= BA_SEARCH_FALLBACK=http://www.bing.test/search?q= BA_TEST_PUBLIC_IP=127.0.0.1 npm run build && esbuild scripts/e2e.mjs --bundle --platform=node --format=esm --external:playwright --log-level=warning --outfile=dist/e2e.mjs && node dist/e2e.mjs",
+    "test:e2e": "rm -rf dist/e2e-ext && mkdir -p dist/e2e-ext && cp -R extension/manifest.json extension/sidepanel.html extension/viewer.html extension/icons extension/_locales dist/e2e-ext/ && BA_OUTDIR=dist/e2e-ext BA_BACKEND=http://127.0.0.1:${E2E_PORT:-9394} BA_SEARCH=http://www.google.test/search?q= BA_SEARCH_FALLBACK=http://www.bing.test/search?q= BA_TEST_PUBLIC_IP=127.0.0.1 BA_GITHUB_CLIENT_ID=test-client BA_GITHUB_CLIENT_SECRET=test-secret BA_GITHUB_APP=browser-agent-test BA_GITHUB_WEB=http://127.0.0.1:$(( ${E2E_PORT:-9394} + 2 )) BA_GITHUB_API=http://127.0.0.1:$(( ${E2E_PORT:-9394} + 2 ))/api npm run build && esbuild scripts/e2e.mjs --bundle --platform=node --format=esm --external:playwright --log-level=warning --outfile=dist/e2e.mjs && node dist/e2e.mjs",
     "package": "node scripts/package.mjs"
   },
   "dependencies": {

@@ -1,6 +1,8 @@
 // agent 迴圈、設定載入、首頁建議、對話存取。畫面由 React 依 S 重繪（見 store.ts）。
 import Anthropic from "@anthropic-ai/sdk";
-import { systemPrompt, tools, MEMORY_TOOLS, CARD_TOOLS, newTask, type Summarizer } from "./shared";
+import { systemPrompt, tools, MEMORY_TOOLS, CARD_TOOLS, REPO_TOOLS, newTask, type Summarizer } from "./shared";
+import { githubConfigured } from "./github";
+import { loadRepoContext, repoPrompt, type RepoContext } from "./repo";
 import { memoryPrompt } from "./memory";
 import { currentProject, projectPrompt, projectSkills, type Project } from "./projects";
 import { withAttachments, hasAttachment, splitAttachments } from "./attachments";
@@ -220,17 +222,35 @@ async function runApi(userText: string, typed: string | null, stats: Stats, sign
   // 專案也在這時釘住（任務進行中切換器停用）：指示、檔案清單、專案記憶、只開它指定的技能
   const project = currentProject();
   const skills = projectSkills(S.skills, project);
-  const system = systemPrompt(langEnglishName()) + (project ? projectPrompt(project) : "") + skillsPrompt(skills)
-    + (S.memoryOn ? memoryPrompt(S.memories, project ? { name: project.name, memories: project.memories } : undefined) : "");
+  // 連了 GitHub repo 的專案：讀 repo 的 CLAUDE.md／AGENTS.md 與記憶檔，當參考資料放進系統提示詞（不當成使用者的授權，見 repo.ts 的 repoPrompt）。
+  // 讀的時候也要看得到「進行中」，按停止要停得掉
+  const repo = project?.repo && githubConfigured() ? project.repo : undefined;
+  let repoCtx: RepoContext | null = null;
+  let repoTaint = false;
+  if (repo) {
+    const reading = addItem({ kind: "pending" });
+    try { repoCtx = await loadRepoContext(repo, signal); } finally { removeItem(reading); }
+    // repo 的 CLAUDE.md、AGENTS.md、記憶檔載入了就算讀過不可信內容（實作審查 S3：不一定是使用者寫的）。讀 repo 失敗、記憶關掉也算
+    // （第二輪 5：之前的任務可能載入過，對話歷史裡留著受它影響的內容，而系統提示詞不留痕跡）
+    repoTaint = !!repoCtx.error || !!repoCtx.instructions.length || !!repoCtx.memories.length;
+    if (!S.memoryOn) repoCtx.memories = [];
+  }
+  const projectPart = !project ? "" : repo ? `\n\n## 目前專案：${project.name}` + repoPrompt(repo, repoCtx!) : projectPrompt(project);
+  const projectMemories = !project ? undefined : repo ? { name: project.name, memories: [], repo: `${repo.owner}/${repo.name}` } : { name: project.name, memories: project.memories };
+  const system = systemPrompt(langEnglishName()) + projectPart + skillsPrompt(skills) + (S.memoryOn ? memoryPrompt(S.memories, projectMemories) : "");
   // 截圖只給 Anthropic：OpenAI 相容的 tool 訊息只收文字，圖會被丟掉；沒有專案檔案就不給 read_project_file
-  const turnTools = tools.filter((x) => (S.memoryOn || !MEMORY_TOOLS.includes(x.name)) && (provider === "anthropic" || x.name !== "screenshot") && (x.name !== "read_project_file" || !!project?.files.length));
+  const turnTools = tools.filter((x) => (S.memoryOn || !MEMORY_TOOLS.includes(x.name)) && (provider === "anthropic" || x.name !== "screenshot")
+    && (x.name !== "read_project_file" || (!repo && !!project?.files.length)) && (!REPO_TOOLS.includes(x.name) || !!repo));
   const startTab = await activeTab();
   const tabId = startTab.id!;
   // 這則對話裡已經有網頁來的內容（之前讀過頁面、這則或之前附了選取文字）或第三方技能的指示（系統提示詞裡的說明、/名稱 展開、use_skill 的結果）＝一開始就算不可信
   // 專案檔案（read_project_file）也是不可信的內容
-  const tainted = typed === null || thirdPartyListed(skills) || msgs.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || hasAttachment(m.content) || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && ["read_page", "navigate", "search_web", "read_url", "screenshot", "read_project_file"].includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
+  // repo 專案裡的 remember／forget 結果可能帶著 repo 記憶檔的原文（forget 找到好幾條時會列出來）
+  const historyTools = ["read_page", "navigate", "search_web", "read_url", "screenshot", "read_project_file", "list_repo_files", "read_repo_file", ...(repo ? ["remember", "forget"] : [])];
+  const tainted = typed === null || thirdPartyListed(skills) || repoTaint || msgs.some((m) => (typeof m.content === "string" ? m.content.includes("\n<page_selection chars=") || hasAttachment(m.content) || untrustedSkill(m.content) : m.content.some((b) => (b.type === "tool_use" && historyTools.includes(b.name!)) || (b.type === "tool_result" && typeof b.content === "string" && untrustedSkill(b.content)))));
   const task = newTask(startTab.url, typed ?? "", tainted, cloud ? readLimit : undefined); // cloud：任務開始時釘住；byok 照舊即時讀 S.pageChars
   if (project) task.projectId = project.id;
+  if (repo) { task.repo = repo; task.repoVisibility = repoCtx!.visibility; task.repoPages = repoCtx!.pages; }
   if (!task.question) task.question = userText.slice(0, 500); // 首頁建議：沒有使用者打的字，用建議的提示詞
   if (provider === "anthropic" && S.summarizePages) task.summarize = summarizer(cloud, () => (cloud ? baHeaders("task", session, usage, readLimit) : undefined), stats);
 

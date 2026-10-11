@@ -7,6 +7,7 @@ import { parseSkill, serializeSkill, cleanName, LEGACY_SOURCE, type Skill } from
 import { bundleSkills, fetchSkills, folderEntries, unzip, isZip, InstallError } from "./skill-install";
 import { toMarkdown, groupChats, MAX_CHATS, type ChatMeta } from "./history";
 import { currentProject } from "./projects";
+import { authorize, githubConfigured, hasTokens, me, revoke } from "./github";
 import { t, LANGS, langPref, setLangPref, currentLang, type Key } from "./i18n";
 import { IconBack, IconChevron, IconErr, IconFile, IconFolder, IconGitHub, IconGlobe, IconGoogle, IconLink, IconMore, IconOk, IconPlus, IconSearch, IconShield, IconUser } from "./icons";
 import { Select, type Opt } from "./select";
@@ -231,6 +232,38 @@ export function HistoryPage({ nav }: { nav: Nav }) {
 
 // ---------- 設定首頁 ----------
 
+// GitHub 帳號（專案綁 repo 用）：連結在專案頁做；這裡看連結的是誰、可以中斷（撤銷 token，專案的 repo 連結留著，重新授權就能用）
+function GitHubRow() {
+  const [login, setLogin] = useState<string | null | undefined>(undefined); // undefined＝還在查；null＝沒連結
+  const [note, setNote] = useState(""); // 連結失敗、GitHub 那邊沒撤銷成功
+  // me() 失敗可能是授權失效（token 已經被清掉）：再看一次有沒有 token，沒有就顯示「連結」
+  const load = () => hasTokens().then((has) => (has ? me().then(setLogin, () => hasTokens().then((still) => setLogin(still ? "" : null))) : setLogin(null)));
+  useEffect(() => { load(); }, []);
+  if (!githubConfigured() || login === undefined) return null;
+  const connect = async () => {
+    setNote("");
+    try { await authorize(); await load(); } catch (e) { setNote(String((e as Error)?.message ?? e)); }
+  };
+  const disconnect = async () => {
+    const revoked = await revoke();
+    setLogin(null);
+    setNote(revoked ? "" : t("settings.githubRevokeFailed"));
+  };
+  return (
+    <>
+      <div className="list-group">
+        <div className="list-row" id="settings-github">
+          <span className="row-text">{t("settings.github")}<small>{login === null ? t("settings.githubOff") : login ? t("settings.githubConnected", { login }) : t("settings.githubConnectedAnon")}</small></span>
+          {login === null
+            ? <button type="button" className="btn btn-ghost btn-sm" id="settings-github-connect" onClick={connect}>{t("settings.githubConnect")}</button>
+            : <button type="button" className="btn btn-ghost btn-sm" id="settings-github-disconnect" onClick={disconnect}>{t("settings.githubDisconnect")}</button>}
+        </div>
+      </div>
+      {note && <div className="hint" id="settings-github-note">{note}</div>}
+    </>
+  );
+}
+
 const PAGE_CHARS: [number, Key?][] = [[3000, "settings.pageCharsMin"], [5000], [8000, "settings.pageCharsDefault"], [15000], [30000, "settings.pageCharsMax"]];
 
 function NavRow({ id, title, value, onClick }: { id: string; title: string; value: string; onClick: () => void }) {
@@ -263,6 +296,7 @@ export function SettingsPage({ nav }: { nav: Nav }) {
         <NavRow id="settings-memory" title={t("memory.title")} value={t(S.memoryOn ? "settings.memorySummaryOn" : "settings.memorySummaryOff", { n: S.memories.length })} onClick={() => nav.push({ name: "memory" })} />
         <NavRow id="settings-skills" title={t("skills.title")} value={t("settings.skillsSummary", { n: S.skills.length })} onClick={() => nav.push({ name: "skills" })} />
       </div>
+      <GitHubRow />
       <div className="list-group">
         <div className="list-row">
           <label className="row-text" htmlFor="lang">{t("settings.language")}</label>

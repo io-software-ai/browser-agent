@@ -4,11 +4,12 @@ import { createPortal } from "react-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { Source } from "./shared";
-import { S, emit, setMemories, type Item, type MdItem, type ThinkingItem, type ToolItem, type AskItem, type FileItem, type ConfirmItem, type MemoryItem, type PageItem } from "./store";
+import type { DiffLine } from "./repo";
+import { S, emit, setMemories, type Item, type MdItem, type ThinkingItem, type ToolItem, type AskItem, type FileItem, type ConfirmItem, type MemoryItem, type PageItem, type CommitItem } from "./store";
 import { updateProject } from "./projects";
 import { t, currentLang, type Key } from "./i18n";
 import { openUpgrade } from "./pages";
-import { IconBookmark, IconCopy, IconDownload, IconErr, IconFile, IconGlobe, IconOk, IconQuestion, IconShield } from "./icons";
+import { IconBookmark, IconCopy, IconDownload, IconErr, IconFile, IconGitHub, IconGlobe, IconOk, IconQuestion, IconShield } from "./icons";
 
 // 連結文字看起來像網址／網域、但跟真正前往的網域不同（[bank.com](https://evil.example)）時要露出真網域
 const bareHost = (h: string) => h.toLowerCase().replace(/^www\./, "");
@@ -267,6 +268,8 @@ export function LogItem({ item }: { item: Item }) {
       return <ConfirmCard item={item} />;
     case "memory":
       return <MemoryCard item={item} />;
+    case "commit":
+      return <CommitCard item={item} />;
     case "page":
       return <PageCard item={item} />;
   }
@@ -357,10 +360,23 @@ function ConfirmCard({ item }: { item: ConfirmItem }) {
     <div className="chat-card confirm-card" data-state={item.state}>
       <div className="card-title"><IconShield /><span>{t("confirm.title")}</span></div>
       <div className="card-body">{item.text ?? t(item.submitting ? "confirm.submit" : "confirm.click", { label: item.label })}</div>
-      {item.detail && <div className="confirm-detail">{item.detail}</div>}
-      {item.aria && <div className="card-hint confirm-aria">{t("confirm.aria", { label: item.aria })}</div>}
-      {item.mismatch && <div className="confirm-warn">{t("confirm.mismatch")}</div>}
-      <div className="card-hint">{t("confirm.site", { host: item.host })}</div>
+      {item.diff ? (
+        // 寫進 GitHub repo：路徑單獨一行（同形字、看不見的字元在 repo.ts 先擋過）、commit 訊息、增刪行數、警告、差異
+        <>
+          <div className="confirm-path"><code>{item.label}</code>{item.stats && <span className="diff-stats"><b className="add">+{item.stats.added}</b> <b className="del">−{item.stats.removed}</b></span>}</div>
+          {item.detail && <div className="card-hint confirm-message">{t("confirm.commitMessage", { message: item.detail })}</div>}
+          {item.warn?.map((w) => <div className="confirm-warn" key={w}>{t(w as Key)}</div>)}
+          <DiffView lines={item.diff} />
+        </>
+      ) : (
+        <>
+          {item.detail && <div className="confirm-detail">{item.detail}</div>}
+          {item.aria && <div className="card-hint confirm-aria">{t("confirm.aria", { label: item.aria })}</div>}
+          {item.mismatch && <div className="confirm-warn">{t("confirm.mismatch")}</div>}
+          {item.warn?.map((w) => <div className="confirm-warn" key={w}>{t(w as Key)}</div>)}
+          <div className="card-hint">{t("confirm.site", { host: item.host })}</div>
+        </>
+      )}
       {item.state === "waiting" ? (
         <div className="card-actions">
           <button type="button" className="btn btn-primary confirm-allow" onClick={() => item.decide?.(true)}>{t("confirm.allow")}</button>
@@ -373,9 +389,47 @@ function ConfirmCard({ item }: { item: ConfirmItem }) {
   );
 }
 
+// 寫進 repo 的差異（實作審查 S2、U1）：長行折行（不准把內容推到框外）、新檔的行號（開頭省略掉多少看得出來），
+// 框裡還有沒完整看到的行就在框下面寫「還有 N 行」（第二輪 4：看行的底邊，一行很長、只露出開頭也算；框的寬度變了重量）
+function DiffView({ lines }: { lines: (DiffLine | null)[] }) {
+  const box = useRef<HTMLPreElement>(null);
+  const [below, setBelow] = useState(0);
+  const measure = () => {
+    const el = box.current;
+    if (!el) return;
+    const bottom = el.scrollTop + el.clientHeight + 1;
+    setBelow(Array.from(el.children as HTMLCollectionOf<HTMLElement>).filter((c) => !c.classList.contains("gap") && c.offsetTop + c.offsetHeight > bottom).length);
+  };
+  useLayoutEffect(() => {
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (box.current) ro.observe(box.current);
+    return () => ro.disconnect();
+  }, [lines]);
+  return (
+    <>
+      <pre className="diff" ref={box} onScroll={measure} aria-label={t("confirm.diff")}>
+        {lines.map((l, i) => (l ? <span key={i} className={l.op === "+" ? "add" : l.op === "-" ? "del" : undefined} data-n={l.n ?? ""}>{l.op} {l.text}</span> : <span key={i} className="gap">⋯</span>))}
+      </pre>
+      {below > 0 && <div className="card-hint diff-more" id="diff-more">{t("confirm.diffMore", { n: below })}</div>}
+    </>
+  );
+}
+
+// 已經 commit 到 GitHub 的檔案：路徑、增刪行數、commit 連結
+function CommitCard({ item }: { item: CommitItem }) {
+  return (
+    <div className="chat-card commit-card">
+      <IconGitHub />
+      <span className="memory-text"><small>{t("card.committed", { repo: item.repo })}</small><span className="confirm-path"><code>{item.path}</code><span className="diff-stats"><b className="add">+{item.added}</b> <b className="del">−{item.removed}</b></span></span></span>
+      <a className="btn btn-ghost sm" href={item.url} target="_blank" rel="noopener noreferrer">{t("card.viewCommit")}</a>
+    </div>
+  );
+}
+
 function MemoryCard({ item }: { item: MemoryItem }) {
   const project = item.projectId ? S.projects.find((p) => p.id === item.projectId) : undefined;
-  const gone = !!item.projectId && !project; // 專案已經刪了：沒有東西可以復原，也不能改到全域記憶
+  const gone = (!!item.projectId && !project) || !!item.repo; // 專案已經刪了，或記在 repo（已經 commit）：沒有復原，也不能改到全域記憶
   // 復原只刪完全相同的那一條（部分符合會刪到別條）
   const undo = async () => {
     const before = project ? project.memories : S.memories;
@@ -384,7 +438,7 @@ function MemoryCard({ item }: { item: MemoryItem }) {
     item.undone = true;
     emit();
   };
-  const title = item.op === "forget" ? t("card.forgotten") : item.undone ? t("card.memoryUndone") : project ? t("card.rememberedProject", { name: project.name }) : t("card.remembered");
+  const title = item.op === "forget" ? t("card.forgotten") : item.undone ? t("card.memoryUndone") : item.repo ? t("card.rememberedRepo", { repo: item.repo }) : project ? t("card.rememberedProject", { name: project.name }) : t("card.remembered");
   return (
     <div className="chat-card memory-card" data-undone={item.undone ? "" : undefined}>
       <IconBookmark />

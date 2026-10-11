@@ -2,9 +2,14 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { S, showToast } from "./store";
 import { resetChat, openChat } from "./agent";
-import { t, currentLang } from "./i18n";
+import { t, currentLang, type Key } from "./i18n";
 import { Page, RowMenu, MemoryEditor, type Nav, type MenuItem } from "./pages";
-import { IconBookmark, IconChevron, IconChevronDown, IconErr, IconFile, IconFolder, IconHistory } from "./icons";
+import { IconBookmark, IconChevron, IconChevronDown, IconErr, IconFile, IconFolder, IconGitHub, IconHistory } from "./icons";
+import { Select } from "./select";
+import { authorize, fileUrl, githubConfigured, hasTokens, installUrl, listBranches, listRepos, repoInfo, repoUrl, type GhRepo, type RepoInfo, type Visibility } from "./github";
+
+const VISIBILITY: Record<Visibility, Key> = { private: "project.githubPrivate", public: "project.githubPublic", internal: "project.githubInternal" };
+import { MEMORY_PATH } from "./repo";
 import { openPdf, pdfText, isScanned, MAX_SCAN_BYTES } from "./pdf";
 import {
   MAX_PROJECTS, MAX_FILES, MAX_FILE_BYTES, MAX_PROJECT_BYTES, MAX_INSTRUCTIONS, MAX_PROJECT_NAME,
@@ -199,13 +204,14 @@ export function ProjectPage({ id, nav }: { id: string; nav: Nav }) {
         nav.closeAll("input");
       }}>{t("project.start")}</button>
       <ProjectDetails p={p} />
-      <ProjectFiles p={p} />
-      <section className="skill-group" aria-labelledby="project-memory-title">
+      {githubConfigured() && <ProjectGitHub p={p} />}
+      {!p.repo && <ProjectFiles p={p} />}
+      {!p.repo && <section className="skill-group" aria-labelledby="project-memory-title">
         <div className="group-head"><h2 className="group-title" id="project-memory-title">{t("project.memory")}<span className="group-count">{p.memories.length}</span></h2></div>
         <div className="hint">{t("project.memoryHint")}</div>
         {!S.memoryOn && <div className="notice" id="project-memory-off">{t("project.memoryOff")}</div>}
         <MemoryEditor id="project-memory" get={() => S.projects.find((x) => x.id === id)?.memories ?? []} save={(list) => updateProject(id, { memories: list })} placeholder={t("project.memoryPlaceholder")} />
-      </section>
+      </section>}
       <ProjectSkills p={p} />
       <ProjectChats p={p} nav={nav} />
       <DeleteProject p={p} nav={nav} />
@@ -240,7 +246,7 @@ function ProjectDetails({ p }: { p: Project }) {
           onChange={(e) => { setName(e.target.value); later({ name: cleanProjectName(e.target.value) }); }}
           onBlur={() => { flush(); if (!cleanProjectName(name)) setName(p.name); }} />
       </label>
-      <div className="row">
+      {!p.repo && <div className="row">
         <div className="group-head">
           <h2 className="group-title" id="project-instr-title"><label htmlFor="project-instructions">{t("project.instructions")}</label></h2>
           <small className="char-count" aria-live="polite">{instr.length.toLocaleString(currentLang())} / {MAX_INSTRUCTIONS.toLocaleString(currentLang())}</small>
@@ -248,7 +254,7 @@ function ProjectDetails({ p }: { p: Project }) {
         <textarea className="input project-instructions" id="project-instructions" maxLength={MAX_INSTRUCTIONS} placeholder={t("project.instructionsPlaceholder")} value={instr}
           onChange={(e) => { setInstr(e.target.value); later({ instructions: e.target.value }); }} onBlur={flush} />
         <div className="hint">{t("project.instructionsHint")}</div>
-      </div>
+      </div>}
     </section>
   );
 }
@@ -353,6 +359,130 @@ function ProjectChats({ p, nav }: { p: Project; nav: Nav }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+// ---------- 綁 GitHub repo ----------
+// 連結：（還沒授權就先授權）→ 列出 App 看得到的 repo → 選 repo 與分支。連好之後顯示 repo、公開／私人、信任狀態
+function ProjectGitHub({ p }: { p: Project }) {
+  const [phase, setPhase] = useState<"idle" | "busy" | "pick">("idle");
+  const [repos, setRepos] = useState<GhRepo[]>([]);
+  const [pick, setPick] = useState("");
+  const [branches, setBranches] = useState<string[]>([]);
+  const [branch, setBranch] = useState("");
+  const [err, setErr] = useState("");
+  const [info, setInfo] = useState<RepoInfo | null>(null);
+  const [authed, setAuthed] = useState(true); // 授權失效（GitHub 回 401、refresh token 過期）時 github.ts 會清掉 token：這裡顯示重新連結
+  const key = (r: { owner: string; name: string }) => `${r.owner}/${r.name}`;
+  useEffect(() => {
+    setInfo(null);
+    // 查 repo 時才發現授權失效（github.ts 會清掉 token）：查完再看一次有沒有 token
+    if (p.repo) hasTokens().then((has) => { setAuthed(has); if (has && p.repo) repoInfo(p.repo).then((i) => { setInfo(i); hasTokens().then(setAuthed); }); });
+  }, [p.repo?.owner, p.repo?.name]);
+  const fail = (e: unknown) => { setErr(t("project.githubError", { msg: String((e as Error)?.message ?? e) })); setPhase("idle"); };
+  const choose = async (k: string, list = repos) => {
+    const r = list.find((x) => key(x) === k);
+    if (!r) return;
+    setPick(k);
+    setBranch(r.defaultBranch);
+    setBranches([r.defaultBranch]);
+    try { setBranches(await listBranches(r)); } catch { /* 只列預設分支 */ }
+  };
+  const start = async () => {
+    setErr("");
+    setPhase("busy");
+    try {
+      if (!(await hasTokens())) await authorize();
+      const list = await listRepos();
+      setRepos(list);
+      setPhase("pick");
+      if (list[0]) await choose(key(list[0]), list);
+    } catch (e) { fail(e); }
+  };
+  const reauth = async () => {
+    setErr("");
+    try {
+      await authorize();
+      setAuthed(true);
+      if (p.repo) setInfo(await repoInfo(p.repo));
+    } catch (e) { fail(e); }
+  };
+  const link = async () => {
+    const r = repos.find((x) => key(x) === pick);
+    if (!r || !branch) return;
+    await updateProject(p.id, { repo: { owner: r.owner, name: r.name, branch } });
+    setPhase("idle");
+  };
+  if (p.repo) {
+    const l = p.repo;
+    return (
+      <section className="skill-group" aria-labelledby="project-github-title">
+        <div className="group-head"><h2 className="group-title" id="project-github-title">{t("project.github")}</h2></div>
+        <div className="list-group" id="project-repo">
+          <div className="list-row repo-row">
+            <span className="project-icon"><IconGitHub /></span>
+            <span className="row-text">
+              <strong>{l.owner}/{l.name}</strong>
+              <small>{t("project.githubBranchIs", { branch: l.branch })}{info?.visibility && ` · ${t(VISIBILITY[info.visibility])}`}</small>
+            </span>
+            <a className="text-btn" href={repoUrl(l)} target="_blank" rel="noopener noreferrer">{t("project.githubOpen")}</a>
+          </div>
+        </div>
+        {!authed && (
+          <div className="repo-auth" id="project-repo-auth">
+            <div className="form-error">{t("project.githubReauthNeeded")}</div>
+            <button type="button" className="btn btn-primary" id="project-repo-reauth" onClick={reauth}><IconGitHub />{t("project.githubReauth")}</button>
+          </div>
+        )}
+        <div className="hint" id="project-repo-trust">{t("project.githubReference")}</div>
+        <div className="hint">{t("project.githubHowTo", { memory: MEMORY_PATH })}</div>
+        <div className="source-links">
+          <a className="text-btn" href={fileUrl(l, "CLAUDE.md", true)} target="_blank" rel="noopener noreferrer">{t("project.githubEditInstructions")}</a>
+          <button type="button" className="text-btn danger" id="project-repo-unlink" disabled={S.busy} onClick={() => updateProject(p.id, { repo: undefined })}>{t("project.githubUnlink")}</button>
+        </div>
+        {err && <div className="form-error" id="project-github-error">{err}</div>}
+      </section>
+    );
+  }
+  return (
+    <section className="skill-group" aria-labelledby="project-github-title">
+      <div className="group-head"><h2 className="group-title" id="project-github-title">{t("project.github")}</h2></div>
+      <div className="card add-card" id="project-github">
+        <div className="add-head"><strong>{t("project.githubConnect")}</strong><small>{t("project.githubIntro")}</small></div>
+        {phase !== "pick" ? (
+          <button type="button" className="btn btn-primary" id="project-github-connect" disabled={phase === "busy"} onClick={start}><IconGitHub />{t("project.githubConnect")}</button>
+        ) : repos.length ? (
+          <>
+            <div className="repo-pick" role="radiogroup" aria-label={t("project.githubPick")}>
+              {repos.map((r) => (
+                <label className="repo-option" key={key(r)}>
+                  <input type="radio" name="project-repo" checked={pick === key(r)} onChange={() => choose(key(r))} />
+                  <span className="repo-name">{key(r)}</span>
+                  <span className="badge">{t(VISIBILITY[r.visibility])}</span>
+                </label>
+              ))}
+            </div>
+            <div className="row">
+              <span className="group-title">{t("project.githubBranch")}</span>
+              <Select id="project-repo-branch" variant="field" label={t("project.githubBranch")} value={branch} options={branches.map((b) => ({ value: b, label: b }))} onChange={setBranch} />
+            </div>
+            <div className="actions">
+              <button type="button" className="btn btn-primary" id="project-github-link" disabled={!pick || !branch} onClick={link}>{t("project.githubLink")}</button>
+              <a className="text-btn" href={installUrl()} target="_blank" rel="noopener noreferrer">{t("project.githubInstallMore")}</a>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="hint">{t("project.githubNone")}</div>
+            <div className="actions">
+              <a className="btn btn-primary" href={installUrl()} target="_blank" rel="noopener noreferrer">{t("project.githubInstall")}</a>
+              <button type="button" className="btn btn-ghost" onClick={start}>{t("project.githubRefresh")}</button>
+            </div>
+          </>
+        )}
+        {err && <div className="form-error" id="project-github-error">{err}</div>}
+      </div>
     </section>
   );
 }

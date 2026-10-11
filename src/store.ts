@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import type { Skill } from "./skills";
 import type { Project } from "./projects";
+import type { DiffLine } from "./repo";
 import type { ChatMeta, Message } from "./history";
 import type { ProviderId, ProviderConf } from "./providers";
 import type { Me } from "./backend";
@@ -22,12 +23,14 @@ export type AskInput = { question: string; options: AskOption[]; multiSelect?: b
 export type AskItem = { id: number; kind: "ask"; input: AskInput; state: "waiting" | "answered" | "cancelled"; answer?: string; picked?: string[]; reply?: (text: string, picked: string[]) => void };
 export type FileItem = { id: number; kind: "file"; filename: string; content: string; description?: string };
 // text：不是點擊／送出的確認（例如掃描 PDF 要整份送出），直接給卡片內文
-export type ConfirmItem = { id: number; kind: "confirm"; label: string; submitting: boolean; host: string; text?: string; aria?: string; mismatch?: boolean; detail?: string; state: "waiting" | "allowed" | "denied"; decide?: (ok: boolean) => void };
-export type MemoryItem = { id: number; kind: "memory"; op: "remember" | "forget"; text: string; undone?: boolean; projectId?: string }; // projectId：記在專案記憶
+// diff／stats／warn：寫進 GitHub repo 的確認卡（改了哪幾行、增刪行數、警告的 i18n key）
+export type ConfirmItem = { id: number; kind: "confirm"; label: string; submitting: boolean; host: string; text?: string; aria?: string; mismatch?: boolean; detail?: string; diff?: (DiffLine | null)[]; stats?: { added: number; removed: number }; warn?: string[]; state: "waiting" | "allowed" | "denied"; decide?: (ok: boolean) => void };
+export type CommitItem = { id: number; kind: "commit"; repo: string; path: string; url: string; added: number; removed: number }; // 已經 commit 到 GitHub 的檔案
+export type MemoryItem = { id: number; kind: "memory"; op: "remember" | "forget"; text: string; undone?: boolean; projectId?: string; repo?: string }; // projectId：記在專案記憶；repo：記在 GitHub repo 的記憶檔（已經 commit，沒有復原）
 export type PageItem = { id: number; kind: "page"; title: string; url: string; tabId: number };
 // 額度用完（402 quota_exceeded）或方案不含所選模型（402 model_not_in_plan，why: "model"）：對話裡顯示說明與升級按鈕
 export type QuotaItem = { id: number; kind: "quota"; why?: "model" };
-export type Item = QuotaItem | UserItem | NoteItem | StatsItem | MdItem | ThinkingItem | ToolItem | PendingItem | AskItem | FileItem | ConfirmItem | MemoryItem | PageItem;
+export type Item = QuotaItem | UserItem | NoteItem | StatsItem | MdItem | ThinkingItem | ToolItem | PendingItem | AskItem | FileItem | ConfirmItem | MemoryItem | PageItem | CommitItem;
 
 export type Suggestion = { title: string; subtitle: string; prompt: string };
 

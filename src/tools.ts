@@ -4,13 +4,15 @@ import { listElements, inspectTarget } from "./elements";
 import { addMemory, forgetMemory } from "./memory";
 import { checkFile } from "./files";
 import { skillResult } from "./skills";
-import { fileChunk, fileList, fileText, findFile, projectSkills, updateProject, MAX_FILE_CHARS, MAX_FILE_READS, READ_CHUNK } from "./projects";
+import { decodeText, fileChunk, fileList, fileText, findFile, projectSkills, updateProject, MAX_FILE_CHARS, MAX_FILE_READS, READ_CHUNK } from "./projects";
+import { getFile, hasWorkflows, listDir, listTree, putFile, GhError, type RepoLink } from "./github";
+import { checkReadPath, checkRepoContent, checkRepoPath, commitMessage, decodeForWrite, editMemoryMd, encodeForWrite, hasHiddenChars, showHidden, diffHunks, diffLines, diffStats, execSensitive, nonAscii, parseMemoryMd, repoFileList, splitLines, MAX_CHANGED_CHARS, MAX_CHANGED_LINES, MAX_LIST, MAX_REPO_WRITES, MAX_WRITE_BYTES, MEMORY_PATH, type FileFormat } from "./repo";
 import { fetchPdf, openPdf, pdfText, isScanned, isPdfUrl, viewerFile, toBase64, PdfError, MAX_SCAN_PAGES, MAX_SCAN_BYTES } from "./pdf";
 import { S, emit, addItem, setMemories, type AskItem, type AskInput, type ConfirmItem, type NoteItem } from "./store";
 import type { Block } from "./history";
 import { displayUrl, isPrivateHost, isPrivateIp, RESEARCH_HOSTS, type Task, type Link } from "./shared";
 import { activeProvider } from "./providers";
-import { t } from "./i18n";
+import { t, currentLang } from "./i18n";
 import { BACKEND } from "./backend";
 
 export async function activeTab() {
@@ -285,6 +287,10 @@ declare const BA_TEST_PUBLIC_IP: string; // esbuild define：e2e 的假網站都
 const noHash = (url: string) => url.split("#")[0];
 // 使用者這則訊息裡的網址、搜尋結果、讀過頁面裡的連結：完全相同才算。# 也要相同（或不帶）——
 // # 後面不會送到伺服器，但網頁的 JS 讀得到 location.hash，「登記過的網址#<記憶>」一樣能把資料帶出去
+// GitHub 網頁上能直接改 repo 的頁面（新增、編輯、刪除、上傳檔案；網址可以預先帶好檔名與內容，剩下只要按 commit）、網頁版編輯器：
+// 讀過不可信內容之後，就算是讀過的頁面裡的連結也要問（第二輪 2：連結是網頁作者放的）
+const githubWrite = (u: URL) => /^(github\.dev|vscode\.dev)$/i.test(u.hostname) || (/^(www\.)?github\.com$/i.test(u.hostname) && /^\/[^/]+\/[^/]+\/(new|edit|delete|upload)\//i.test(u.pathname));
+
 function knownUrl(u: URL, task: Task): boolean {
   const base = noHash(u.href);
   return (!u.hash && task.typedUrls.has(base)) || S.sources.some((x) => x.url === u.href || (!u.hash && noHash(x.url) === base));
@@ -338,7 +344,8 @@ async function checkReadUrl(raw: unknown, task: Task, signal?: AbortSignal): Pro
   denyBackend(u);
   const typed = task.typedUrls.has(noHash(u.href));
   if (isPrivateHost(u.hostname) && !typed) throw new Error("不能讀本機或內網的網址（使用者自己給的網址除外）");
-  if (knownUrl(u, task) || RESEARCH_HOSTS.includes(u.hostname)) return u;
+  // 研究用網站（GitHub、npm）的網址在讀過內容之前可以自己組；讀過之後也要問：攻擊者自己的公開 repo 看得到流量路徑，自組的網址能把資料帶出去
+  if (knownUrl(u, task) || (RESEARCH_HOSTS.includes(u.hostname) && !task.tainted)) return u;
   if (!(await confirm({ label: u.hostname, submitting: false, host: u.hostname, text: t("confirm.readUrl"), detail: displayUrl(u.href) }, signal))) throw new Error(DENIED);
   return u;
 }
@@ -405,6 +412,19 @@ async function screenshot(tab: chrome.tabs.Tab): Promise<Block[]> {
 }
 
 // tabId 是這次任務開始時的分頁：使用者中途切到別的分頁，agent 也不會跑去操作那一頁
+// repo 的記憶檔：內容（統一成 \n）、原檔的格式、讀到的清單、sha（寫回時帶 sha，這期間被改過就 409）。
+// 檔案在 repo 裡、可能被別人改過：讀到了就算不可信（實作審查 S6）。不是 UTF-8、換行混用的不改（第二輪 6），丟出原因
+async function readRepoMemory(l: RepoLink, task: Task): Promise<{ text: string; fmt: FileFormat; list: string[]; sha?: string }> {
+  const f = await getFile(l, MEMORY_PATH);
+  if (!f) return { text: "", fmt: { bom: false, crlf: false }, list: [] };
+  task.tainted = true;
+  const { text, ...fmt } = decodeForWrite(f.bytes, MEMORY_PATH);
+  return { text, fmt, list: parseMemoryMd(text), sha: f.sha };
+}
+
+// 寫進 repo 的確認卡警告（寫檔、記憶共用）：不是私人的、查不到是不是私人的、私人但開了 Pages
+const visibilityWarn = (task: Task) => (task.repoVisibility === "private" ? (task.repoPages ? "confirm.repoPages" : "") : task.repoVisibility ? "confirm.repoPublic" : "confirm.repoMaybePublic");
+
 const taskProject = (task: Task) => (task.projectId ? S.projects.find((p) => p.id === task.projectId) ?? null : null);
 
 export async function runTool(name: string, input: Input, tabId: number, task: Task, signal?: AbortSignal): Promise<string | Block[]> {
@@ -421,42 +441,136 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
     }
     case "remember":
     case "forget": {
-      // remember 帶 scope=project 記在專案。forget 兩邊都找：完全相同優先；只有部分符合、兩邊又都有，就請模型給完整的句子
+      // remember 帶 scope=project 記在專案（連了 GitHub repo 的專案記在 repo 的 .browser-agent/memory.md，改了就 commit）。
+      // forget 兩邊都找：完全相同優先；只有部分符合、兩邊又都有，就請模型給完整的句子
       const project = taskProject(task);
       const key = String(input.text ?? "").trim();
       if (name === "remember" && input.scope === "project" && !project) throw new Error("這個對話不在專案裡：不帶 scope 才能記（記在使用者記憶）");
+      // 只有用得到時才讀 repo 的記憶檔：記到專案（讀不到就丟例外，不能假裝記住了），或 forget（讀不到就只找使用者記憶）。
+      // 不帶 scope 的 remember 跟 GitHub 無關，GitHub 授權失效也照樣記得住
+      const repoMem = project && task.repo && (name === "forget" || input.scope === "project")
+        ? await readRepoMemory(task.repo, task).catch((e) => (name === "forget" ? null : Promise.reject(e)))
+        : null;
+      const projList = repoMem ? repoMem.list : project?.memories ?? [];
       let inProject = name === "remember" && !!project && input.scope === "project";
       if (name === "forget" && project) {
         const exact = (xs: string[]) => xs.includes(key);
         const partial = (xs: string[]) => !!key && xs.some((m) => m.includes(key));
-        if (exact(project.memories) || exact(S.memories)) inProject = exact(project.memories);
-        else if (partial(project.memories) && partial(S.memories)) {
-          const hits = [...project.memories, ...S.memories].filter((m) => m.includes(key));
+        if (exact(projList) || exact(S.memories)) inProject = exact(projList);
+        else if (partial(projList) && partial(S.memories)) {
+          const hits = [...projList, ...S.memories].filter((m) => m.includes(key));
           return `專案記憶和使用者記憶裡都有符合「${key}」的，請給完整的句子：\n${hits.map((m) => `- ${m}`).join("\n")}`;
-        } else inProject = partial(project.memories);
+        } else inProject = partial(projList);
       }
-      const current = () => (inProject ? taskProject(task)?.memories : S.memories);
+      const inRepo = inProject && !!repoMem;
+      const current = () => (inRepo ? repoMem!.list : inProject ? taskProject(task)?.memories : S.memories);
       const before = current()!;
       const { list, result } = (name === "remember" ? addMemory : forgetMemory)(before, input.text);
-      // 讀過網頁（或專案檔案、附檔）之後才要改記憶：可能是內容誘導的（記憶會跟著之後每一次對話，刪掉也一樣），先給使用者看是哪一句
-      if (list !== before && task.tainted) {
+      const repoName = task.repo ? `${task.repo.owner}/${task.repo.name}` : "";
+      // 讀過網頁（或專案檔案、附檔、repo 的檔）之後才要改記憶：可能是內容誘導的（記憶會跟著之後每一次對話，刪掉也一樣），先給使用者看是哪一句。
+      // 記在 repo 的每次都問（實作審查 S6）：改了就是一個 commit，repo 不是私人的話等於公開出去
+      if (list !== before && (task.tainted || inRepo)) {
         const text = name === "remember" ? list.find((m) => !before.includes(m))! : before.find((m) => !list.includes(m))!;
+        if (inRepo) checkRepoContent(text); // 雙向控制字元會讓卡片上看到的跟寫進去的不一樣
         const ask = name === "remember"
-          ? (inProject ? t("confirm.rememberProject", { name: project!.name }) : t("confirm.remember"))
-          : (inProject ? t("confirm.forgetProject", { name: project!.name }) : t("confirm.forget"));
-        if (!(await confirm({ label: text, submitting: false, host: hostOf(tab.url), text: ask, detail: text }, signal))) {
+          ? (inRepo ? t("confirm.rememberRepo", { repo: repoName }) : inProject ? t("confirm.rememberProject", { name: project!.name }) : t("confirm.remember"))
+          : (inRepo ? t("confirm.forgetRepo", { repo: repoName }) : inProject ? t("confirm.forgetProject", { name: project!.name }) : t("confirm.forget"));
+        const warn = inRepo ? [visibilityWarn(task), hasHiddenChars(text) && "confirm.repoHidden"].filter((x): x is string => !!x) : undefined;
+        const shown = inRepo ? showHidden(text) : text; // 看不見的字元在卡片上顯示成 ⟦U+XXXX⟧（跟寫檔的差異一樣）
+        if (!(await confirm({ label: shown, submitting: false, host: inRepo ? repoName : hostOf(tab.url), text: ask, detail: shown, warn }, signal))) {
           throw new Error(name === "remember" ? "使用者不同意記下這句。不要再嘗試記住它" : "使用者不同意刪掉這條記憶。不要再嘗試刪它");
         }
-        if (current() !== before) return `記憶在等待確認時被改過了，請重新呼叫 ${name}`; // 等待期間在設定頁（或專案頁）改過
+        if (!inRepo && current() !== before) return `記憶在等待確認時被改過了，請重新呼叫 ${name}`; // 等待期間在設定頁（或專案頁）改過；repo 的記憶檔靠 sha 擋（下面）
       }
       if (list !== before) {
-        if (inProject) await updateProject(project!.id, { memories: list });
+        if (inRepo) {
+          try {
+            // 只加／刪那一行，其他行原樣保留（實作審查 C2）；commit 訊息不放記憶的內容（公開 repo 的 commit 列表、通知都看得到）
+            const entry = (name === "remember" ? list.find((m) => !before.includes(m)) : before.find((m) => !list.includes(m)))!;
+            await putFile(task.repo!, MEMORY_PATH, encodeForWrite(editMemoryMd(repoMem!.text, name === "remember" ? { add: entry } : { remove: entry }), repoMem!.fmt), "Browser Agent: update memory", repoMem!.sha);
+          } catch (e) {
+            if (e instanceof GhError && e.code === "conflict") return `repo 的記憶檔在這期間被改過了，請重新呼叫 ${name}`;
+            throw e;
+          }
+        } else if (inProject) await updateProject(project!.id, { memories: list });
         else await setMemories(list);
         // 記了／忘了哪一句：新增的是 list 多出來的那條，刪掉的是 before 少掉的那條
         const text = name === "remember" ? list.find((m) => !before.includes(m)) : before.find((m) => !list.includes(m));
-        if (text) addItem({ kind: "memory", op: name, text, ...(inProject ? { projectId: project!.id } : {}) });
+        if (text) addItem({ kind: "memory", op: name, text, ...(inProject ? { projectId: project!.id } : {}), ...(inRepo ? { repo: repoName } : {}) });
       }
       return result;
+    }
+    case "list_repo_files": {
+      const l = task.repo;
+      if (!l) throw new Error("這個專案沒有連結 GitHub repo");
+      // 算進讀檔次數（實作審查 U2）：檔名清單也會跟著之後每一輪重送
+      task.fileReads = (task.fileReads ?? 0) + 1;
+      if (task.fileReads > MAX_FILE_READS) throw new Error(`這個任務已經讀了 ${MAX_FILE_READS} 次檔案，不能再列：用已經讀到的內容回答`);
+      task.tainted = true; // 檔名是 repo 帶來的（可能有別人取的）：跟網頁內容一樣不可信
+      const path = input.path ? checkReadPath(input.path) : "";
+      const tree = path ? null : await listTree(l);
+      const rows = tree
+        ? tree.files.map((f) => (f.link ? `${f.path}（symlink，不能讀寫）` : f.path))
+        : (await listDir(l, path)).map((x) => (x.type === "dir" ? `${x.path}/` : x.type === "file" ? `${x.path}（${x.size} bytes）` : `${x.path}（${x.type}）`));
+      const truncated = !!tree?.truncated;
+      const more = truncated || rows.length > MAX_LIST;
+      return repoFileList(l, rows.slice(0, MAX_LIST), more ? `（${path ? `「${path}」有 ${rows.length} 個項目` : `repo 有 ${rows.length}${truncated ? " 個以上" : " 個"}檔案`}，只列前 ${MAX_LIST} 個；帶 path 看某個資料夾）\n` : "");
+    }
+    case "read_repo_file": {
+      const l = task.repo;
+      if (!l) throw new Error("這個專案沒有連結 GitHub repo");
+      task.fileReads = (task.fileReads ?? 0) + 1;
+      if (task.fileReads > MAX_FILE_READS) throw new Error(`這個任務已經讀了 ${MAX_FILE_READS} 次檔案，不能再讀：用已經讀到的內容回答，或請使用者在下一則訊息指定要看哪個檔案`);
+      task.tainted = true; // repo 裡常有別人寫的東西（相依套件、複製來的內容）：跟網頁內容一樣不可信
+      const used = task.fileChars ?? 0;
+      if (used >= MAX_FILE_CHARS) throw new Error(`這個任務已經讀了 ${MAX_FILE_CHARS} 字的檔案，不能再讀：用已經讀到的內容回答`);
+      const path = checkReadPath(input.path);
+      const f = await getFile(l, path);
+      if (!f) throw new Error(`repo 的 ${l.branch} 分支沒有「${path}」。用 list_repo_files 看有哪些檔案`);
+      const text = decodeText(f.bytes.slice().buffer, currentLang()); // Big5、Shift_JIS 這類舊編碼照介面語言猜（跟專案檔案一樣）
+      if (text == null) throw new Error(`「${path}」不是文字檔，不能讀`);
+      const offset = Number(input.offset) || 0;
+      const size = Math.min(READ_CHUNK, task.readChars ?? S.pageChars, MAX_FILE_CHARS - used);
+      task.fileChars = used + Math.min(size, Math.max(0, text.length - offset));
+      return fileChunk(path, text, offset, size, "repo_file");
+    }
+    case "write_repo_file": {
+      const l = task.repo;
+      if (!l) throw new Error("這個專案沒有連結 GitHub repo");
+      if ((task.repoWrites ?? 0) >= MAX_REPO_WRITES) throw new Error(`這個任務已經寫了 ${MAX_REPO_WRITES} 次，不能再寫：先告訴使用者做到哪裡，他回覆後可以接著做`);
+      const path = checkRepoPath(input.path); // 指示、記憶、.github、.git 一律擋
+      if (typeof input.content !== "string") throw new Error("content 要是檔案的完整文字內容");
+      const text: string = input.content;
+      if (new Blob([text]).size > MAX_WRITE_BYTES) throw new Error("內容超過 1 MB，不能寫");
+      checkRepoContent(text); // 雙向控制字元（Trojan Source）一律擋
+      const cur = await getFile(l, path); // null＝新檔；資料夾、symlink、submodule 在這裡就被擋掉
+      if (cur && decodeText(cur.bytes.slice().buffer, currentLang()) == null) throw new Error(`「${path}」是二進位檔，不能改`);
+      // 實作審查 C1：差異是用統一成 \n 的行算的，寫回時要照原檔的 BOM 與換行（CRLF），否則卡片上 +1 −1、實際整個檔每一行都變了
+      const old = cur ? decodeForWrite(cur.bytes, path) : { text: "", bom: false, crlf: false };
+      const norm = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/\r\n/g, "\n"); // BOM 照原檔，不照模型給的
+      if (cur && old.text === norm) return `「${path}」內容沒有變，不用寫`;
+      const lines = diffLines(splitLines(old.text), splitLines(norm));
+      const stats = lines && diffStats(lines);
+      const chars = lines?.reduce((n, l) => n + (l.op === " " ? 0 : l.text.length), 0) ?? 0;
+      if (!lines || !stats || stats.added + stats.removed > MAX_CHANGED_LINES || chars > MAX_CHANGED_CHARS) throw new Error(`一次改太多（超過 ${MAX_CHANGED_LINES} 行或 ${MAX_CHANGED_CHARS} 字），使用者看不完差異：分成幾次寫，每次改一部分`);
+      const message = commitMessage(input.message, path, !cur);
+      const repoName = `${l.owner}/${l.name}`;
+      // 每次都要確認（不管讀過什麼）：被注入的 agent 寫進分支的就是使用者的程式碼。卡片在擴充功能自己的頁面，網頁按不到
+      task.repoWrites = (task.repoWrites ?? 0) + 1; // 走到確認卡才算一次：路徑、內容檢查擋下的不算；使用者拒絕的也算（免得一直跳卡）
+      if (task.repoCI === undefined) task.repoCI = await hasWorkflows(l); // 一個任務查一次
+      const warn = [visibilityWarn(task), execSensitive(path) && "confirm.repoExec", nonAscii(path) && "confirm.repoNonAscii", hasHiddenChars(norm) && "confirm.repoHidden", task.repoCI && "confirm.repoCI"].filter((x): x is string => !!x);
+      const shown = diffHunks(lines).map((d) => d && { ...d, text: showHidden(d.text) }); // 看不見的格式字元在卡片上顯示成 ⟦U+XXXX⟧
+      const ok = await confirm({ label: path, submitting: false, host: repoName, text: t(cur ? "confirm.repoUpdate" : "confirm.repoCreate", { repo: repoName, branch: l.branch }), detail: message, diff: shown, stats, warn }, signal);
+      if (!ok) throw new Error(DENIED);
+      let r: { commitSha: string; commitUrl: string };
+      try {
+        r = await putFile(l, path, encodeForWrite(norm, old), message, cur?.sha);
+      } catch (e) {
+        if (e instanceof GhError && e.code === "conflict") throw new Error(`「${path}」在你讀了之後被改過（別人或別台電腦），沒有寫入：重新 read_repo_file 再改`);
+        throw e;
+      }
+      addItem({ kind: "commit", repo: repoName, path, url: r.commitUrl, added: stats.added, removed: stats.removed });
+      return `已 commit「${path}」到 ${repoName} 的 ${l.branch}（${r.commitSha.slice(0, 7)}，+${stats.added} −${stats.removed}）`;
     }
     case "read_project_file": {
       const project = taskProject(task);
@@ -512,7 +626,7 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       // 其他 agent 自己組的網址：讀過網頁或檔案之後一律問——任務起始的網站、允許過的網站、使用者訊息裡提到的網站也問
       // （那個網站可能就是攻擊者的：使用者請它比對某個報價頁，報價頁的注入就能叫 agent 把專案檔案塞進同站的網址帶走）；
       // 還沒讀過任何內容時只問允許清單以外的網站（使用者訊息裡提到的網站在清單裡）。卡片上顯示完整網址
-      if (!knownUrl(dest, task) && (task.tainted || !task.origins.has(dest.origin))) {
+      if ((!knownUrl(dest, task) || (task.tainted && githubWrite(dest))) && (task.tainted || !task.origins.has(dest.origin))) {
         const text = t(task.origins.has(dest.origin) ? "confirm.navigateBuilt" : "confirm.navigate");
         if (!(await confirm({ label: dest.hostname, submitting: false, host: dest.hostname, text, detail: displayUrl(dest.href) }, signal))) throw new Error(DENIED);
         task.origins.add(dest.origin);
@@ -530,7 +644,7 @@ export async function runTool(name: string, input: Input, tabId: number, task: T
       // 點連結到別的網站跟 navigate 一樣能把資料帶出去（網頁可以先把 href 改成帶資料的網址）：同一套允許清單
       let dest: URL | null = null;
       try { dest = new URL(info.href ?? ""); } catch { /* 不是連結 */ }
-      if (dest && /^https?:$/.test(dest.protocol) && !task.origins.has(dest.origin)) {
+      if (dest && /^https?:$/.test(dest.protocol) && (!task.origins.has(dest.origin) || (task.tainted && githubWrite(dest)))) {
         if (!(await confirm({ label: dest.hostname, submitting: false, host: dest.hostname, text: t("confirm.navigate"), detail: displayUrl(dest.href) }, signal))) throw new Error(DENIED);
         task.origins.add(dest.origin);
       }
