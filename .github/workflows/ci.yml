@@ -1,20 +1,73 @@
 name: CI
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  test:
+  verify:
+    name: Verify (typecheck, checks, build, e2e)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run check
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Self checks (skills, memory, history, i18n)
+        run: npm run check
+      - name: Build extension
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (changed commits)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then RANGE="$BASE..$GITHUB_SHA"; else RANGE="-1"; fi
+          ./gitleaks git --redact --no-banner --log-opts="$RANGE" .
+
+  notify:
+    name: Notify failure
+    if: failure() && github.event_name == 'push'
+    needs: [verify, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post to Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MSG: ${{ github.event.head_commit.message }}
+          URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$WEBHOOK" ] || { echo "DISCORD_WEBHOOK_URL not set; skipping"; exit 0; }
+          jq -n --arg repo "$GITHUB_REPOSITORY" --arg sha "${GITHUB_SHA::7}" --arg msg "$(printf '%s' "$MSG" | head -n1 | cut -c1-200)" \
+                --arg actor "$GITHUB_ACTOR" --arg url "$URL" \
+            '{username: "mac-server-watchdog", allowed_mentions: {parse: []}, embeds: [{
+               title: ("🟡 CI FAILED · " + $repo), url: $url, color: 15844367,
+               description: ("**CI failed** on main.\n`" + $sha + "` " + $msg),
+               fields: [{name: "Author", value: $actor, inline: true}, {name: "Logs", value: ("[Open run](" + $url + ")"), inline: true}],
+               footer: {text: "GitHub Actions · CI gate"}, timestamp: (now | todate)}]}' \
+          | curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
